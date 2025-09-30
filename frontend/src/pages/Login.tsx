@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import apiClient from '../api/client';
-import axios, { AxiosError } from 'axios';
+import apiClient from '../api/client.js';
+import axios from 'axios';
 
 // 同样，为错误响应定义接口
 interface ApiError {
@@ -31,7 +31,7 @@ const Login: React.FC = () => {
       localStorage.setItem('token', token);
 
       alert('Login successful!');
-      navigate('/'); // 登录成功后跳转到主页
+      navigate('/dashboard'); // 登录成功后跳转到dashboard
       
     } catch (err) {
       if (axios.isAxiosError(err) && err.response) {
