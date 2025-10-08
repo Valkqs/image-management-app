@@ -80,3 +80,28 @@ func (h *Handler) RemoveTagFromImage(c *gin.Context) {
 
 	c.JSON(http.StatusNoContent, nil)
 }
+
+// GetAllUsedTags 获取所有正在使用的标签（至少有一张图片关联的标签）
+func (h *Handler) GetAllUsedTags(c *gin.Context) {
+	userID_i, _ := c.Get("userID")
+	userID := userID_i.(uint)
+
+	var tags []model.Tag
+	// 查询所有标签，这些标签至少关联了当前用户的一张图片
+	err := h.DB.
+		Joins("JOIN image_tags ON image_tags.tag_id = tags.id").
+		Joins("JOIN images ON images.id = image_tags.image_id").
+		Where("images.user_id = ?", userID).
+		Group("tags.id").
+		Order("tags.name ASC").
+		Find(&tags).Error
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tags"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tags": tags,
+	})
+}
