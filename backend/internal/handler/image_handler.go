@@ -182,13 +182,57 @@ func parseExif(data []byte) (*model.Image, error) {
 	return info, nil
 }
 
-// GetUserImages 获取当前用户的图片列表
+// GetUserImages 获取当前用户的图片列表，支持搜索和筛选
 func (h *Handler) GetUserImages(c *gin.Context) {
 	userID_i, _ := c.Get("userID")
 	userID := userID_i.(uint)
 
+	// 获取查询参数
+	tags := c.Query("tags")         // 例如: ?tags=风景,旅行
+	month := c.Query("month")       // 例如: ?month=2025-10
+	camera := c.Query("camera")     // 例如: ?camera=Canon
+
+	// 构建基础查询
+	query := h.DB.Preload("Tags").Where("user_id = ?", userID)
+
+	// 根据标签筛选
+	if tags != "" {
+		tagNames := strings.Split(tags, ",")
+		// 清理标签名称（去除空格）
+		for i := range tagNames {
+			tagNames[i] = strings.TrimSpace(tagNames[i])
+		}
+		
+		// 使用子查询来查找包含指定标签的图片
+		// 这里使用 INNER JOIN 来实现多对多关系的查询
+		query = query.Joins("INNER JOIN image_tags ON image_tags.image_id = images.id").
+			Joins("INNER JOIN tags ON tags.id = image_tags.tag_id").
+			Where("tags.name IN ?", tagNames).
+			Group("images.id").
+			Having("COUNT(DISTINCT tags.id) >= ?", len(tagNames))
+	}
+
+	// 根据拍摄月份筛选
+	if month != "" {
+		// month 格式: 2025-10
+		// 解析月份并构建日期范围查询
+		monthTime, err := time.Parse("2006-01", month)
+		if err == nil {
+			// 计算月份的开始和结束时间
+			startOfMonth := monthTime
+			endOfMonth := monthTime.AddDate(0, 1, 0)
+			
+			query = query.Where("taken_at >= ? AND taken_at < ?", startOfMonth, endOfMonth)
+		}
+	}
+
+	// 根据相机制造商筛选
+	if camera != "" {
+		query = query.Where("camera_make LIKE ?", "%"+camera+"%")
+	}
+
 	var images []model.Image
-	result := h.DB.Preload("Tags").Where("user_id = ?", userID).Order("created_at DESC").Find(&images)
+	result := query.Order("created_at DESC").Find(&images)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch images"})
 		return

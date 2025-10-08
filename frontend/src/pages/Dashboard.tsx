@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import apiClient from '../api/client';
-import EXIFInfo from '../components/EXIFInfo';
 import ImageModal from '../components/ImageModal';
 
 // 定义图片数据类型
@@ -32,11 +31,26 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
 
+  // 搜索和筛选状态
+  const [searchTags, setSearchTags] = useState('');
+  const [searchMonth, setSearchMonth] = useState('');
+  const [searchCamera, setSearchCamera] = useState('');
+
   // 获取图片列表的函数
-  const fetchImages = async () => {
+  const fetchImages = async (tags?: string, month?: string, camera?: string) => {
     try {
       setLoading(true);
-      const response = await apiClient.get<{ images: Image[] }>('/images');
+      
+      // 构建查询参数
+      const params = new URLSearchParams();
+      if (tags) params.append('tags', tags);
+      if (month) params.append('month', month);
+      if (camera) params.append('camera', camera);
+      
+      const queryString = params.toString();
+      const url = queryString ? `/images?${queryString}` : '/images';
+      
+      const response = await apiClient.get<{ images: Image[] }>(url);
       setImages(response.data.images || []);
     } catch (error: any) {
       console.error('Failed to fetch images:', error);
@@ -54,6 +68,19 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     fetchImages();
   }, []);
+
+  // 应用搜索筛选
+  const handleSearch = () => {
+    fetchImages(searchTags, searchMonth, searchCamera);
+  };
+
+  // 清空筛选
+  const handleClearFilters = () => {
+    setSearchTags('');
+    setSearchMonth('');
+    setSearchCamera('');
+    fetchImages();
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSelectedFiles(e.target.files);
@@ -73,7 +100,8 @@ const Dashboard: React.FC = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setMessage(response.data.message);
-      fetchImages();
+      // 上传后重新获取图片，保持当前的搜索筛选状态
+      fetchImages(searchTags, searchMonth, searchCamera);
     } catch (error) {
       console.error('Upload failed:', error);
       setMessage('Upload failed.');
@@ -84,6 +112,112 @@ const Dashboard: React.FC = () => {
     <div>
       <h2>My Image Dashboard</h2>
       
+      {/* 搜索和筛选区域 */}
+      <div style={{ 
+        background: '#f8f9fa', 
+        padding: '20px', 
+        borderRadius: '8px', 
+        marginBottom: '20px',
+        border: '1px solid #dee2e6'
+      }}>
+        <h3 style={{ marginTop: 0 }}>搜索和筛选</h3>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gap: '15px',
+          marginBottom: '15px'
+        }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+              标签 (用逗号分隔):
+            </label>
+            <input
+              type="text"
+              placeholder="例如: 风景,旅行"
+              value={searchTags}
+              onChange={(e) => setSearchTags(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                border: '1px solid #ced4da',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+          
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+              拍摄月份:
+            </label>
+            <input
+              type="month"
+              value={searchMonth}
+              onChange={(e) => setSearchMonth(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                border: '1px solid #ced4da',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+          
+          <div>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+              相机制造商:
+            </label>
+            <input
+              type="text"
+              placeholder="例如: Canon, Nikon"
+              value={searchCamera}
+              onChange={(e) => setSearchCamera(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                border: '1px solid #ced4da',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={handleSearch}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '500',
+              fontSize: '14px'
+            }}
+          >
+            🔍 搜索
+          </button>
+          <button 
+            onClick={handleClearFilters}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontWeight: '500',
+              fontSize: '14px'
+            }}
+          >
+            🔄 清空筛选
+          </button>
+        </div>
+      </div>
+      
       <div>
         <h3>Upload New Images</h3>
         <input type="file" multiple onChange={handleFileChange} />
@@ -93,7 +227,14 @@ const Dashboard: React.FC = () => {
 
       <hr />
 
-      <h3>My Gallery</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h3 style={{ margin: 0 }}>My Gallery</h3>
+        {!loading && (
+          <span style={{ color: '#6c757d', fontSize: '14px' }}>
+            找到 {images.length} 张图片
+          </span>
+        )}
+      </div>
       {loading ? (
         <p>Loading images...</p>
       ) : (
@@ -148,8 +289,8 @@ const Dashboard: React.FC = () => {
           image={selectedImage}
           isOpen={!!selectedImage}
           onClose={() => setSelectedImage(null)}
-          // 【修复】在这里添加 onImageUpdate prop，并把 fetchImages 函数传给它
-          onImageUpdate={fetchImages}
+          // 更新图片后保持当前的搜索筛选状态
+          onImageUpdate={() => fetchImages(searchTags, searchMonth, searchCamera)}
         />
       )}
     </div>
