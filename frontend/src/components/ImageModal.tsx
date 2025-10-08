@@ -34,6 +34,8 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
   if (!isOpen) return null;
 
   const [currentImage, setCurrentImage] = useState<Image>(image);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // 当标签被增删后，此函数被调用以刷新数据
   const handleTagsUpdated = async () => {
@@ -47,9 +49,27 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
     }
   };
 
+  // 删除图片
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await apiClient.delete(`/images/${currentImage.ID}`);
+      alert('图片删除成功！');
+      onClose(); // 关闭模态框
+      onImageUpdate(); // 刷新画廊列表
+    } catch (error) {
+      console.error("Failed to delete image:", error);
+      alert('删除图片失败，请稍后重试');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   // 使用 useEffect 确保每次打开不同图片的模态框时，内容都正确更新
   useEffect(() => {
     setCurrentImage(image);
+    setShowDeleteConfirm(false); // 重置删除确认对话框状态
   }, [image]);
 
 
@@ -143,6 +163,74 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
               tags={currentImage.Tags || []}
               onTagsUpdated={handleTagsUpdated}
             />
+          </div>
+
+          {/* 删除按钮区域 */}
+          <div style={{ marginTop: '30px', paddingTop: '20px', borderTop: '1px solid #dee2e6' }}>
+            {!showDeleteConfirm ? (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#c82333'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dc3545'}
+              >
+                🗑️ 删除图片
+              </button>
+            ) : (
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ color: '#dc3545', marginBottom: '15px', fontSize: '14px' }}>
+                  ⚠️ 确定要删除这张图片吗？此操作不可恢复！
+                </p>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      backgroundColor: '#6c757d',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: isDeleting ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      opacity: isDeleting ? 0.6 : 1
+                    }}
+                  >
+                    取消
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: isDeleting ? 'not-allowed' : 'pointer',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      opacity: isDeleting ? 0.6 : 1
+                    }}
+                  >
+                    {isDeleting ? '删除中...' : '确认删除'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           
         </div>

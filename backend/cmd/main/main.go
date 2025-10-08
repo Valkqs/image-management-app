@@ -71,6 +71,7 @@ func main() {
 			authorized.POST("/images/:id/tags", h.AddTagToImage)
 			authorized.DELETE("/images/:id/tags/:tagID", h.RemoveTagFromImage)
 			authorized.GET("/images/:id", h.GetImageByID)
+			authorized.DELETE("/images/:id", h.DeleteImage) // 删除图片
 			// 获取所有使用中的标签
 			authorized.GET("/tags", h.GetAllUsedTags)
 		}

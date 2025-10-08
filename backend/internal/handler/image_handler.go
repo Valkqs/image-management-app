@@ -215,3 +215,49 @@ func (h *Handler) GetImageByID(c *gin.Context) {
 
     c.JSON(http.StatusOK, image)
 }
+
+// DeleteImage 删除图片及其相关资源
+func (h *Handler) DeleteImage(c *gin.Context) {
+	imageID_str := c.Param("id")
+	imageID, err := strconv.Atoi(imageID_str)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid image ID"})
+		return
+	}
+
+	userID_i, _ := c.Get("userID")
+	userID := userID_i.(uint)
+
+	// 1. 查询图片是否存在，并验证是否属于当前用户
+	var image model.Image
+	if err := h.DB.Where("id = ? AND user_id = ?", imageID, userID).First(&image).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found or you don't have permission to delete it"})
+		return
+	}
+
+	// 2. 删除文件系统中的原始图片和缩略图
+	// 删除原始图片
+	if err := os.Remove(image.FilePath); err != nil {
+		log.Printf("Warning: Failed to delete original image file %s: %v", image.FilePath, err)
+		// 不中止操作，继续删除数据库记录
+	}
+
+	// 删除缩略图
+	if image.ThumbnailPath != "" && image.ThumbnailPath != image.FilePath {
+		if err := os.Remove(image.ThumbnailPath); err != nil {
+			log.Printf("Warning: Failed to delete thumbnail file %s: %v", image.ThumbnailPath, err)
+		}
+	}
+
+	// 3. 删除数据库中的记录（GORM 会自动处理多对多关系的关联表）
+	// Select("Tags") 确保级联删除关联的标签关系
+	if err := h.DB.Select("Tags").Delete(&image).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete image from database"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Image deleted successfully",
+		"imageID": imageID,
+	})
+}
