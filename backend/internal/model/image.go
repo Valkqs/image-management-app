@@ -18,4 +18,5 @@ type Image struct {
 	TakenAt       *time.Time `json:"takenAt"`                     // 拍摄时间 (使用指针以允许为空)
 	Latitude      *float64   `json:"latitude"`                    // 纬度
 	Longitude     *float64   `json:"longitude"`                   // 经度
+	Tags          []Tag      `gorm:"many2many:image_tags;" json:"Tags"`
 }

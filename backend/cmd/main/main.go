@@ -68,6 +68,9 @@ func main() {
             authorized.GET("/images", h.GetUserImages)
 			// 其他需要保护的路由，例如图片上传
 			// authorized.POST("/images", h.UploadImage) 
+			authorized.POST("/images/:id/tags", h.AddTagToImage)
+			authorized.DELETE("/images/:id/tags/:tagID", h.RemoveTagFromImage)
+			authorized.GET("/images/:id", h.GetImageByID)
 		}
 	}
 

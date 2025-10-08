@@ -34,7 +34,7 @@ func InitDB() (*gorm.DB, error) {
 
 	// 自动迁移模式，GORM会自动创建或更新表结构
 	// 这对于开发非常方便
-	err = db.AutoMigrate(&model.User{}, &model.Image{})
+	err = db.AutoMigrate(&model.User{}, &model.Image{}, &model.Tag{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to auto migrate database: %w", err)
 	}

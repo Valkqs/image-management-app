@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings" // 【修复】添加 strings 包的导入
 	"time"
 
@@ -187,7 +188,7 @@ func (h *Handler) GetUserImages(c *gin.Context) {
 	userID := userID_i.(uint)
 
 	var images []model.Image
-	result := h.DB.Where("user_id = ?", userID).Order("created_at DESC").Find(&images)
+	result := h.DB.Preload("Tags").Where("user_id = ?", userID).Order("created_at DESC").Find(&images)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch images"})
 		return
@@ -197,4 +198,20 @@ func (h *Handler) GetUserImages(c *gin.Context) {
 		"images": images,
 		"count":  len(images),
 	})
+}
+
+func (h *Handler) GetImageByID(c *gin.Context) {
+    imageID_str := c.Param("id")
+	imageID, _ := strconv.Atoi(imageID_str)
+	userID_i, _ := c.Get("userID")
+	userID := userID_i.(uint)
+
+    var image model.Image
+    // 【注意】查询时同时预加载标签
+    if err := h.DB.Preload("Tags").Where("id = ? AND user_id = ?", imageID, userID).First(&image).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found"})
+		return
+	}
+
+    c.JSON(http.StatusOK, image)
 }
