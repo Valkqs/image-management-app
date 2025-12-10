@@ -93,6 +93,8 @@ func main() {
 			authorized.POST("/images/:id/analyze", h.AnalyzeImage) // 手动触发 AI 分析
 			// 获取所有使用中的标签
 			authorized.GET("/tags", h.GetAllUsedTags)
+			// MCP 大模型对话接口
+			authorized.POST("/mcp/query", h.MCPQuery) // 通过自然语言查询图片
 		}
 	}
 
