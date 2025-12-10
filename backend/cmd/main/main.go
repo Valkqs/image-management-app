@@ -2,13 +2,13 @@ package main
 
 import (
 	"log"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/Valkqs/image-management-app/backend/internal/database"
 	"github.com/Valkqs/image-management-app/backend/internal/handler"
 	"github.com/Valkqs/image-management-app/backend/internal/middleware"
-	"time"
 )
 
 func main() {
@@ -45,7 +45,22 @@ func main() {
 	config.AllowAllOrigins = true
 	config.AllowHeaders = append(config.AllowHeaders, "Authorization") // 允许前端携带 Authorization 头
 	r.Use(cors.New(config))
-	r.Static("/uploads", "./uploads")
+	
+	// 静态文件服务 - 使用自定义路由确保CORS头（必须在API路由之前）
+	r.GET("/uploads/*filepath", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept")
+		// c.Param("filepath") 返回的是 /images/xxx.jpg，需要加上 uploads 前缀
+		filepath := c.Param("filepath")
+		c.File("./uploads" + filepath)
+	})
+	r.OPTIONS("/uploads/*filepath", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept")
+		c.Status(204)
+	})
 
 	// 5. 设置路由组
 	api := r.Group("/api/v1")
@@ -71,7 +86,9 @@ func main() {
 			authorized.POST("/images/:id/tags", h.AddTagToImage)
 			authorized.DELETE("/images/:id/tags/:tagID", h.RemoveTagFromImage)
 			authorized.GET("/images/:id", h.GetImageByID)
+			authorized.GET("/images/:id/file", h.GetImageFile) // 获取图片文件（用于编辑）
 			authorized.DELETE("/images/:id", h.DeleteImage) // 删除图片
+			authorized.PUT("/images/:id/edit", h.EditImage) // 编辑图片
 			// 获取所有使用中的标签
 			authorized.GET("/tags", h.GetAllUsedTags)
 		}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TagManager from './TagManager';
 import EXIFViewer from './EXIFViewer';
+import ImageEditor from './ImageEditor';
 import apiClient from '../api/client';
 import Toast from './Toast';
 import { useToast } from '../hooks/useToast';
@@ -28,15 +29,19 @@ interface Image {
 
 interface ImageModalProps {
   image: Image;
+  images?: Image[]; // 所有图片列表，用于轮播
   isOpen: boolean;
   onClose: () => void;
   onImageUpdate: () => void;
 }
 
-const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImageUpdate }) => {
+const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onClose, onImageUpdate }) => {
   const [currentImage, setCurrentImage] = useState<Image>(image);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+  const [editorVersion, setEditorVersion] = useState(0); // 编辑器版本号，用于强制重新加载
   const { toasts, removeToast, success, error: showError } = useToast();
 
   // 当标签被增删后，此函数被调用以刷新数据
@@ -68,10 +73,67 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
     }
   };
 
+  // 初始化当前图片索引
   useEffect(() => {
-    setCurrentImage(image);
+    if (images.length > 0) {
+      const index = images.findIndex(img => img.ID === image.ID);
+      if (index !== -1) {
+        setCurrentIndex(index);
+        setCurrentImage(images[index]);
+      } else {
+        setCurrentImage(image);
+      }
+    } else {
+      setCurrentImage(image);
+    }
     setShowDeleteConfirm(false);
-  }, [image]);
+  }, [image, images]);
+
+  // 切换到上一张图片
+  const handlePrevious = () => {
+    if (images.length > 0) {
+      const newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
+      setCurrentIndex(newIndex);
+      setCurrentImage(images[newIndex]);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  // 切换到下一张图片
+  const handleNext = () => {
+    if (images.length > 0) {
+      const newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
+      setCurrentIndex(newIndex);
+      setCurrentImage(images[newIndex]);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  // 键盘事件处理
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' && images.length > 1) {
+        e.preventDefault();
+        const newIndex = currentIndex > 0 ? currentIndex - 1 : images.length - 1;
+        setCurrentIndex(newIndex);
+        setCurrentImage(images[newIndex]);
+        setShowDeleteConfirm(false);
+      } else if (e.key === 'ArrowRight' && images.length > 1) {
+        e.preventDefault();
+        const newIndex = currentIndex < images.length - 1 ? currentIndex + 1 : 0;
+        setCurrentIndex(newIndex);
+        setCurrentImage(images[newIndex]);
+        setShowDeleteConfirm(false);
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, currentIndex, images, onClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -109,7 +171,80 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
     return `https://www.google.com/maps?q=${lat},${lng}`;
   };
 
+  // 处理编辑完成
+  const handleEditComplete = async () => {
+    setShowEditor(false);
+    // 更新编辑器版本号，强制下次打开时重新加载图片
+    setEditorVersion(prev => prev + 1);
+    // 刷新图片信息
+    try {
+      const response = await apiClient.get<Image>(`/images/${currentImage.ID}`);
+      // 更新图片数据，并添加时间戳来强制刷新缓存
+      const updatedImage = {
+        ...response.data,
+        _cacheBuster: Date.now(), // 添加缓存破坏参数
+      };
+      setCurrentImage(updatedImage);
+      onImageUpdate();
+    } catch (error) {
+      console.error("Failed to refresh image data after edit:", error);
+      showError('刷新图片信息失败');
+    }
+  };
+
+  // 打开编辑器时，更新版本号以确保重新加载图片
+  const handleOpenEditor = () => {
+    setEditorVersion(prev => prev + 1);
+    setShowEditor(true);
+  };
+
   if (!isOpen) return null;
+
+  // 如果显示编辑器，只显示编辑器界面
+  if (showEditor) {
+    return (
+      <>
+        {toasts.map(toast => (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+        
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setShowEditor(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">编辑图片</h2>
+              <button
+                onClick={() => setShowEditor(false)}
+                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <ImageEditor
+              key={`editor-${currentImage.ID}-${editorVersion}`}
+              imageUrl={`http://localhost:8080/${currentImage.filePath}`}
+              imageID={currentImage.ID}
+              version={editorVersion}
+              onSave={handleEditComplete}
+              onCancel={() => setShowEditor(false)}
+            />
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -141,9 +276,40 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
           </button>
 
           {/* 图片区域 */}
-          <div className="flex-1 bg-gray-900 flex items-center justify-center p-8">
+          <div className="flex-1 bg-gray-900 flex items-center justify-center p-8 relative">
+            {images.length > 1 && (
+              <>
+                {/* 上一张按钮 */}
+                <button
+                  onClick={handlePrevious}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all z-10"
+                  aria-label="上一张"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                
+                {/* 下一张按钮 */}
+                <button
+                  onClick={handleNext}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all z-10"
+                  aria-label="下一张"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                
+                {/* 图片计数器 */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm z-10">
+                  {currentIndex + 1} / {images.length}
+                </div>
+              </>
+            )}
             <img
-              src={`http://localhost:8080/${currentImage.filePath}`}
+              key={`${currentImage.ID}-${(currentImage as any)._cacheBuster || ''}`}
+              src={`http://localhost:8080/${currentImage.filePath}?v=${(currentImage as any)._cacheBuster || Date.now()}`}
               alt={currentImage.filename}
               className="max-w-full max-h-[70vh] object-contain rounded-lg"
             />
@@ -255,8 +421,20 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
               </div>
             </div>
 
-            {/* 删除按钮区域 */}
-            <div className="border-t border-gray-200 p-6">
+            {/* 操作按钮区域 */}
+            <div className="border-t border-gray-200 p-6 space-y-3">
+              {/* 编辑按钮 */}
+              <button
+                onClick={handleOpenEditor}
+                className="w-full btn btn-primary flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                编辑图片
+              </button>
+              
+              {/* 删除按钮 */}
               {!showDeleteConfirm ? (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}

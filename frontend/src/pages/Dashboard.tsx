@@ -363,7 +363,7 @@ const Dashboard: React.FC = () => {
                   {/* 图片容器 */}
                   <div className="aspect-square overflow-hidden bg-gray-100">
                     <img 
-                      src={`http://localhost:8080/${image.thumbnailPath}`} 
+                      src={`http://localhost:8080/${image.thumbnailPath}?v=${image.ID}`} 
                       alt={image.filename} 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                       loading="lazy"
@@ -430,6 +430,7 @@ const Dashboard: React.FC = () => {
       {selectedImage && (
         <ImageModal
           image={selectedImage}
+          images={images} // 传递所有图片用于轮播
           isOpen={!!selectedImage}
           onClose={() => setSelectedImage(null)}
           // 更新图片后保持当前的搜索筛选状态

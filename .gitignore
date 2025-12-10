@@ -81,3 +81,6 @@ frontend/yarn-error.log*
 # ===================================================================
 # .dockerignore 文件通常用于控制构建镜像时要忽略的文件
 # .gitignore 主要是控制不提交到Git仓库的文件
+
+
+backend/uploads/images/*

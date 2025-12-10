@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -108,6 +109,13 @@ func (h *Handler) UploadImage(c *gin.Context) {
 			image.ThumbnailPath = thumbnailPath
 		}
 
+		// 提取图片分辨率
+		if resolution, err := getImageResolution(filePath); err == nil {
+			image.Resolution = resolution
+		} else {
+			log.Printf("Failed to get resolution for %s: %v", file.Filename, err)
+		}
+
 		if result := h.DB.Create(&image); result.Error != nil {
 			log.Printf("Failed to save image info to db for %s: %v", file.Filename, result.Error)
 			continue
@@ -115,6 +123,26 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d files processed.", len(files))})
+}
+
+// getImageResolution 获取图片的分辨率（宽度x高度）
+func getImageResolution(imagePath string) (string, error) {
+	file, err := os.Open(imagePath)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+
+	img, _, err := image.Decode(file)
+	if err != nil {
+		return "", err
+	}
+
+	bounds := img.Bounds()
+	width := bounds.Dx()
+	height := bounds.Dy()
+	
+	return fmt.Sprintf("%dx%d", width, height), nil
 }
 
 // generateThumbnail ... (这个函数保持不变) ...
@@ -335,4 +363,109 @@ func (h *Handler) DeleteImage(c *gin.Context) {
 		"message": "Image deleted successfully",
 		"imageID": imageID,
 	})
+}
+
+// EditImage 编辑图片（裁剪和色调调整）
+func (h *Handler) EditImage(c *gin.Context) {
+	imageID_str := c.Param("id")
+	imageID, err := strconv.Atoi(imageID_str)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid image ID"})
+		return
+	}
+
+	userID_i, _ := c.Get("userID")
+	userID := userID_i.(uint)
+
+	// 验证图片所有权
+	var image model.Image
+	if err := h.DB.Where("id = ? AND user_id = ?", imageID, userID).First(&image).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found or you don't have permission"})
+		return
+	}
+
+	// 接收编辑后的图片数据（base64编码）
+	var input struct {
+		ImageData string `json:"imageData" binding:"required"` // base64编码的图片数据
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 解码base64图片数据
+	// 格式: "data:image/jpeg;base64,/9j/4AAQSkZJRg..."
+	imageData := input.ImageData
+	if strings.HasPrefix(imageData, "data:image") {
+		// 移除data URL前缀
+		parts := strings.Split(imageData, ",")
+		if len(parts) != 2 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid image data format"})
+			return
+		}
+		imageData = parts[1]
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(imageData)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to decode image data"})
+		return
+	}
+
+	// 保存编辑后的图片（覆盖原图）
+	if err := os.WriteFile(image.FilePath, decoded, 0644); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save edited image"})
+		return
+	}
+
+	// 重新生成缩略图
+	thumbPath := "uploads/thumbnails"
+	os.MkdirAll(thumbPath, os.ModePerm)
+	newFileName := filepath.Base(image.FilePath)
+	
+	thumbnailPath, err := generateThumbnail(image.FilePath, thumbPath, newFileName)
+	if err != nil {
+		log.Printf("Failed to regenerate thumbnail: %v", err)
+	} else {
+		image.ThumbnailPath = thumbnailPath
+	}
+
+	// 更新分辨率
+	if resolution, err := getImageResolution(image.FilePath); err == nil {
+		image.Resolution = resolution
+	}
+
+	// 更新数据库
+	if err := h.DB.Save(&image).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update image in database"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Image edited successfully",
+		"image":   image,
+	})
+}
+
+// GetImageFile 获取图片文件（用于避免CORS问题）
+func (h *Handler) GetImageFile(c *gin.Context) {
+	imageID_str := c.Param("id")
+	imageID, err := strconv.Atoi(imageID_str)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid image ID"})
+		return
+	}
+
+	userID_i, _ := c.Get("userID")
+	userID := userID_i.(uint)
+
+	// 验证图片所有权
+	var image model.Image
+	if err := h.DB.Where("id = ? AND user_id = ?", imageID, userID).First(&image).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Image not found or you don't have permission"})
+		return
+	}
+
+	// 返回图片文件
+	c.File(image.FilePath)
 }
