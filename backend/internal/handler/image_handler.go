@@ -11,8 +11,9 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings" // 【修复】添加 strings 包的导入
+	"strings"
 	"time"
+	"unicode"
 
 	"github.com/dsoprea/go-exif/v3"
 	exifcommon "github.com/dsoprea/go-exif/v3/common"
@@ -21,6 +22,36 @@ import (
 
 	"github.com/Valkqs/image-management-app/backend/internal/model"
 )
+
+// cleanExifString 清理 EXIF 字符串，移除不可见字符和控制字符
+func cleanExifString(s string) string {
+	if s == "" {
+		return ""
+	}
+	
+	// 移除首尾空白
+	cleaned := strings.TrimSpace(s)
+	
+	// 移除所有控制字符和非打印字符
+	cleaned = strings.Map(func(r rune) rune {
+		// 保留可打印字符、空格、制表符
+		if unicode.IsPrint(r) || r == ' ' || r == '\t' {
+			return r
+		}
+		// 删除其他所有字符
+		return -1
+	}, cleaned)
+	
+	// 移除多余的空白字符
+	cleaned = strings.Join(strings.Fields(cleaned), " ")
+	
+	// 如果清理后为空，返回空字符串
+	if cleaned == "" {
+		return ""
+	}
+	
+	return cleaned
+}
 
 // UploadImage ... (这个函数保持不变) ...
 func (h *Handler) UploadImage(c *gin.Context) {
@@ -141,14 +172,14 @@ func parseExif(data []byte) (*model.Image, error) {
 	info := &model.Image{}
 	rootIfd := index.RootIfd
 
-	// 辅助函数，用于安全地获取标签值
+	// 辅助函数，用于安全地获取标签值并清理字符串
 	getStringVal := func(tagName string) string {
 		results, err := rootIfd.FindTagWithName(tagName)
 		if err == nil && len(results) > 0 {
 			value, err := results[0].Value()
 			if err == nil {
 				if valStr, ok := value.(string); ok {
-					return valStr
+					return cleanExifString(valStr)
 				}
 			}
 		}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import TagManager from './TagManager';
+import EXIFViewer from './EXIFViewer';
 import apiClient from '../api/client';
 import Toast from './Toast';
 import { useToast } from '../hooks/useToast';
@@ -246,6 +247,11 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, isOpen, onClose, onImage
                   tags={currentImage.Tags || []}
                   onTagsUpdated={handleTagsUpdated}
                 />
+              </div>
+
+              {/* 完整 EXIF 信息查看器 */}
+              <div>
+                <EXIFViewer image={currentImage} />
               </div>
             </div>
 
