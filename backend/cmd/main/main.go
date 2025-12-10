@@ -89,6 +89,8 @@ func main() {
 			authorized.GET("/images/:id/file", h.GetImageFile) // 获取图片文件（用于编辑）
 			authorized.DELETE("/images/:id", h.DeleteImage) // 删除图片
 			authorized.PUT("/images/:id/edit", h.EditImage) // 编辑图片
+			// AI 标签分析
+			authorized.POST("/images/:id/analyze", h.AnalyzeImage) // 手动触发 AI 分析
 			// 获取所有使用中的标签
 			authorized.GET("/tags", h.GetAllUsedTags)
 		}

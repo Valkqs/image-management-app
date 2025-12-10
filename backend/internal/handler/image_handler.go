@@ -120,6 +120,9 @@ func (h *Handler) UploadImage(c *gin.Context) {
 			log.Printf("Failed to save image info to db for %s: %v", file.Filename, result.Error)
 			continue
 		}
+
+		// 异步触发 AI 分析（不阻塞上传响应）
+		h.AnalyzeImageAsync(image.ID, filePath)
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d files processed.", len(files))})

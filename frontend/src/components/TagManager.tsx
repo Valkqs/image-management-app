@@ -4,6 +4,7 @@ import apiClient from '../api/client';
 interface Tag {
   ID: number;
   name: string;
+  source?: string; // 'user' 或 'ai'
 }
 
 interface TagManagerProps {
@@ -80,23 +81,39 @@ const TagManager: React.FC<TagManagerProps> = ({ imageID, tags = [], onTagsUpdat
       {/* 当前图片已有的标签 */}
       <div className="flex flex-wrap gap-2 mb-4">
         {tags.length > 0 ? (
-          tags.map(tag => (
-            <span 
-              key={tag.ID}
-              className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded-full text-sm font-medium group hover:bg-blue-700 transition-colors"
-            >
-              {tag.name}
-              <button
-                onClick={() => handleRemoveTag(tag.ID)}
-                className="ml-1 hover:bg-blue-800 rounded-full p-0.5 transition-colors"
-                title="删除标签"
+          tags.map(tag => {
+            const isAITag = tag.source === 'ai';
+            return (
+              <span 
+                key={tag.ID}
+                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium group transition-colors ${
+                  isAITag 
+                    ? 'bg-purple-100 text-purple-800 border border-purple-300 hover:bg-purple-200' 
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </span>
-          ))
+                {isAITag && (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="AI 标签">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                )}
+                {tag.name}
+                <button
+                  onClick={() => handleRemoveTag(tag.ID)}
+                  className={`ml-1 rounded-full p-0.5 transition-colors ${
+                    isAITag 
+                      ? 'hover:bg-purple-300' 
+                      : 'hover:bg-blue-800'
+                  }`}
+                  title="删除标签"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            );
+          })
         ) : (
           <span className="text-sm text-gray-500 italic">暂无标签</span>
         )}

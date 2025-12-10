@@ -24,6 +24,7 @@ interface Image {
 interface Tag {
   ID: number;
   name: string;
+  source?: string; // 'user' 或 'ai'
 }
 
 const Dashboard: React.FC = () => {
