@@ -415,38 +415,68 @@ func (h *Handler) EditImage(c *gin.Context) {
 		return
 	}
 
-	// 保存编辑后的图片（覆盖原图）
-	if err := os.WriteFile(image.FilePath, decoded, 0644); err != nil {
+	// 创建新图片文件（另存为，不覆盖原图）
+	originalPath := "uploads/images"
+	thumbPath := "uploads/thumbnails"
+	os.MkdirAll(originalPath, os.ModePerm)
+	os.MkdirAll(thumbPath, os.ModePerm)
+
+	// 生成新文件名：基于原文件名加上时间戳
+	extension := filepath.Ext(image.Filename)
+	if extension == "" {
+		extension = ".jpg" // 默认使用 jpg
+	}
+	baseName := strings.TrimSuffix(image.Filename, extension)
+	// 清理文件名，移除路径分隔符和其他不安全字符
+	baseName = strings.ReplaceAll(baseName, "/", "_")
+	baseName = strings.ReplaceAll(baseName, "\\", "_")
+	baseName = strings.ReplaceAll(baseName, "..", "_")
+	
+	// 生成唯一的新文件名（使用时间戳确保唯一性）
+	newFileName := fmt.Sprintf("%d-%s-edited-%d%s", userID, baseName, time.Now().UnixNano(), extension)
+	newFilePath := filepath.Join(originalPath, newFileName)
+
+	// 保存编辑后的图片到新文件
+	if err := os.WriteFile(newFilePath, decoded, 0644); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save edited image"})
 		return
 	}
 
-	// 重新生成缩略图
-	thumbPath := "uploads/thumbnails"
-	os.MkdirAll(thumbPath, os.ModePerm)
-	newFileName := filepath.Base(image.FilePath)
-	
-	thumbnailPath, err := generateThumbnail(image.FilePath, thumbPath, newFileName)
+	// 创建新图片记录
+	newImage := model.Image{
+		UserID:   userID,
+		Filename: fmt.Sprintf("%s-edited%s", baseName, extension),
+		FilePath: newFilePath,
+	}
+
+	// 生成缩略图
+	thumbnailPath, err := generateThumbnail(newFilePath, thumbPath, newFileName)
 	if err != nil {
-		log.Printf("Failed to regenerate thumbnail: %v", err)
+		log.Printf("Failed to generate thumbnail: %v", err)
+		newImage.ThumbnailPath = newFilePath
 	} else {
-		image.ThumbnailPath = thumbnailPath
+		newImage.ThumbnailPath = thumbnailPath
 	}
 
-	// 更新分辨率
-	if resolution, err := getImageResolution(image.FilePath); err == nil {
-		image.Resolution = resolution
+	// 提取图片分辨率
+	if resolution, err := getImageResolution(newFilePath); err == nil {
+		newImage.Resolution = resolution
+	} else {
+		log.Printf("Failed to get resolution: %v", err)
 	}
 
-	// 更新数据库
-	if err := h.DB.Save(&image).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update image in database"})
+	// 保存新图片到数据库
+	if err := h.DB.Create(&newImage).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save new image to database"})
 		return
 	}
 
+	// 异步触发 AI 分析（不阻塞响应）
+	h.AnalyzeImageAsync(newImage.ID, newFilePath)
+
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Image edited successfully",
-		"image":   image,
+		"message": "Image saved as new file successfully",
+		"image":   newImage,
 	})
 }
 

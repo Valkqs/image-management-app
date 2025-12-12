@@ -338,7 +338,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
         imageData: imageData,
       });
       
-      success('图片编辑成功！');
+      success('图片已另存为新图片！');
       onSave();
     } catch (error) {
       console.error('Failed to save edited image:', error);
@@ -480,7 +480,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
           className="btn btn-primary"
           disabled={isLoading || !imageLoaded}
         >
-          {isLoading ? '保存中...' : '保存'}
+          {isLoading ? '保存中...' : '另存为新图片'}
         </button>
       </div>
     </div>
