@@ -26,6 +26,30 @@ $env:DB_NAME="image_db"
 $env:JWT_SECRET="your_very_long_and_secure_jwt_secret_key_here"
 ```
 
+### AI 标签分析配置（可选）
+```powershell
+# Google Gemini API Key（用于 AI 标签分析功能）
+# 获取方式：访问 https://makersuite.google.com/app/apikey 或 https://aistudio.google.com/app/apikey
+$env:GEMINI_API_KEY="your-gemini-api-key-here"
+
+# Gemini 模型名称（可选，默认为 gemini-pro-vision）
+# 可选值：
+#   - gemini-pro-vision（支持图片，免费，推荐）
+#   - gemini-pro（文本模型，不支持图片）
+#   - gemini-1.5-pro（更准确，需要配额）
+$env:GEMINI_MODEL="gemini-pro-vision"
+
+# API 请求超时时间（可选，默认为 60s）
+# 如果遇到超时错误，可以增加这个值，例如：120s, 180s
+$env:GEMINI_TIMEOUT="60s"
+
+# HTTP/HTTPS 代理（可选，如果无法直接访问 Google API）
+# 格式：http://proxy-host:port 或 https://proxy-host:port
+# 例如：http://127.0.0.1:7890（Clash/V2Ray 等代理工具）
+$env:HTTP_PROXY="http://127.0.0.1:7890"
+$env:HTTPS_PROXY="http://127.0.0.1:7890"
+```
+
 ## 🔐 JWT密钥生成
 
 ### 方法1: 使用密钥生成器

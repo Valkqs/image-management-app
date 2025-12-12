@@ -70,18 +70,18 @@ const MCPQuery: React.FC<MCPQueryProps> = ({ onQueryResult }) => {
   };
 
   return (
-    <div className="card p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+    <div className="card p-6 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 border-purple-200 dark:border-purple-700 transition-colors">
       <div className="flex items-center gap-2 mb-4">
-        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
-        <h2 className="text-lg font-semibold text-gray-900">AI 智能搜索</h2>
-        <span className="ml-auto px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">AI 智能搜索</h2>
+        <span className="ml-auto px-2 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs font-medium rounded-full">
           MCP
         </span>
       </div>
 
-      <p className="text-sm text-gray-600 mb-4">
+      <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
         使用自然语言描述您想要查找的图片，AI 会自动理解并搜索
       </p>
 
@@ -99,7 +99,7 @@ const MCPQuery: React.FC<MCPQueryProps> = ({ onQueryResult }) => {
           {query && (
             <button
               onClick={() => setQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -143,7 +143,7 @@ const MCPQuery: React.FC<MCPQueryProps> = ({ onQueryResult }) => {
           <button
             key={index}
             onClick={() => setQuery(example)}
-            className="px-3 py-1 text-xs bg-white border border-gray-200 rounded-full hover:border-purple-300 hover:text-purple-600 transition-colors"
+            className="px-3 py-1 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-full hover:border-purple-300 dark:hover:border-purple-500 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
             disabled={loading}
           >
             {example}
@@ -153,14 +153,14 @@ const MCPQuery: React.FC<MCPQueryProps> = ({ onQueryResult }) => {
 
       {/* 显示解析的查询条件 */}
       {lastCondition && (
-        <div className="mt-4 p-4 bg-white rounded-lg border border-gray-200">
+        <div className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
           <div className="flex items-center gap-2 mb-2">
-            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-sm font-medium text-gray-700">AI 解析结果</span>
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI 解析结果</span>
           </div>
-          <div className="space-y-2 text-sm text-gray-600">
+          <div className="space-y-2 text-sm text-gray-600 dark:text-gray-300">
             {lastCondition.tags.length > 0 && (
               <div>
                 <span className="font-medium">标签：</span>
@@ -186,9 +186,9 @@ const MCPQuery: React.FC<MCPQueryProps> = ({ onQueryResult }) => {
               </div>
             )}
             {lastCondition.reasoning && (
-              <div className="pt-2 border-t border-gray-200">
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                 <span className="font-medium">理解：</span>
-                <span className="ml-2 text-gray-500">{lastCondition.reasoning}</span>
+                <span className="ml-2 text-gray-500 dark:text-gray-400">{lastCondition.reasoning}</span>
               </div>
             )}
           </div>

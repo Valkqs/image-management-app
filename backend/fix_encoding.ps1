@@ -15,3 +15,4 @@ $utf8WithBom = New-Object System.Text.UTF8Encoding $true
 Write-Host "文件编码已修复为 UTF-8 with BOM" -ForegroundColor Green
 Write-Host "现在可以运行: .\setup_env.ps1" -ForegroundColor Cyan
 
+

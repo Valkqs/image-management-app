@@ -362,7 +362,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
   return (
     <div className="space-y-4">
       {/* 工具栏 */}
-      <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div className="flex flex-wrap gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
         <button
           onClick={() => setCropMode(!cropMode)}
           className={`btn ${cropMode ? 'btn-primary' : 'btn-outline'} text-sm`}
@@ -386,11 +386,11 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
       </div>
 
       {/* 色调调整滑块 */}
-      <div className="space-y-3 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h3 className="text-sm font-semibold text-gray-700">色调调整</h3>
+      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">色调调整</h3>
         
         <div>
-          <label className="block text-xs text-gray-600 mb-1">
+          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
             亮度: {brightness > 0 ? '+' : ''}{brightness}%
           </label>
           <input
@@ -404,7 +404,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
         </div>
         
         <div>
-          <label className="block text-xs text-gray-600 mb-1">
+          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
             对比度: {contrast > 0 ? '+' : ''}{contrast}%
           </label>
           <input
@@ -418,7 +418,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
         </div>
         
         <div>
-          <label className="block text-xs text-gray-600 mb-1">
+          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
             饱和度: {saturation > 0 ? '+' : ''}{saturation}%
           </label>
           <input
@@ -432,7 +432,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
         </div>
         
         <div>
-          <label className="block text-xs text-gray-600 mb-1">
+          <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
             色相: {hue}°
           </label>
           <input
@@ -449,7 +449,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
       {/* Canvas 画布 */}
       <div 
         ref={containerRef}
-        className="flex justify-center items-center bg-gray-100 rounded-lg p-4 overflow-auto max-h-[60vh]"
+        className="flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-4 overflow-auto max-h-[60vh] transition-colors"
       >
         <canvas
           ref={canvasRef}

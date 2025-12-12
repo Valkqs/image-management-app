@@ -177,8 +177,8 @@ const Dashboard: React.FC = () => {
         {/* Page Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">我的图片</h1>
-            <p className="mt-1 text-sm text-gray-500">管理和浏览您的图片收藏</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">我的图片</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">管理和浏览您的图片收藏</p>
           </div>
         </div>
 
@@ -193,7 +193,7 @@ const Dashboard: React.FC = () => {
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               !useMCP
                 ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +212,7 @@ const Dashboard: React.FC = () => {
             className={`px-4 py-2 text-sm font-medium transition-colors ${
               useMCP
                 ? 'text-purple-600 border-b-2 border-purple-600'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
             <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,15 +235,15 @@ const Dashboard: React.FC = () => {
         {!useMCP && (
         <div className="card p-6">
           <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <h2 className="text-lg font-semibold text-gray-900">搜索和筛选</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">搜索和筛选</h2>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 标签 (用逗号分隔)
               </label>
               <input
@@ -256,7 +256,7 @@ const Dashboard: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 拍摄月份
               </label>
               <input
@@ -268,7 +268,7 @@ const Dashboard: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 相机制造商
               </label>
               <input
@@ -307,10 +307,10 @@ const Dashboard: React.FC = () => {
         {/* 上传区域 */}
         <div className="card p-6">
           <div className="flex items-center gap-2 mb-4">
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <h2 className="text-lg font-semibold text-gray-900">上传图片</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">上传图片</h2>
           </div>
           
           {/* 拖拽上传区域 */}
@@ -321,24 +321,24 @@ const Dashboard: React.FC = () => {
             onDrop={handleDrop}
             className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
               isDragging 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
+                ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/30' 
+                : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
             }`}
           >
             <div className="flex flex-col items-center gap-3">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
               </div>
               
               <div>
-                <p className="text-base font-medium text-gray-700">
+                <p className="text-base font-medium text-gray-700 dark:text-gray-300">
                   {selectedFiles && selectedFiles.length > 0 
                     ? `已选择 ${selectedFiles.length} 个文件` 
                     : '拖拽图片到此处，或点击选择文件'}
                 </p>
-                <p className="text-sm text-gray-500 mt-1">支持 JPG, PNG, GIF 等格式</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">支持 JPG, PNG, GIF 等格式</p>
               </div>
               
               <input
@@ -390,9 +390,9 @@ const Dashboard: React.FC = () => {
         {/* 图片画廊 */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">图片画廊</h2>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">图片画廊</h2>
             {!loading && (
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 共 {images.length} 张图片
               </span>
             )}
@@ -404,7 +404,7 @@ const Dashboard: React.FC = () => {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <p className="text-gray-500">加载中...</p>
+              <p className="text-gray-500 dark:text-gray-400">加载中...</p>
             </div>
           ) : images && images.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -426,11 +426,11 @@ const Dashboard: React.FC = () => {
 
                   {/* 图片信息 */}
                   <div className="p-4">
-                    <h3 className="font-medium text-gray-900 truncate mb-2">
+                    <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate mb-2">
                       {image.filename}
                     </h3>
                     
-                    <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mb-3">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>

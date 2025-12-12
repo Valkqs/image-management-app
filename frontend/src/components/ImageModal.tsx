@@ -237,14 +237,14 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
           onClick={() => setShowEditor(false)}
         >
           <div 
-            className="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in p-6"
+            className="bg-white dark:bg-gray-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in p-6 transition-colors"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">编辑图片</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">编辑图片</h2>
               <button
                 onClick={() => setShowEditor(false)}
-                className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-all"
+                className="w-10 h-10 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full flex items-center justify-center transition-all"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -281,7 +281,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
         onClick={onClose}
       >
         <div 
-          className="bg-white rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-scale-in flex flex-col md:flex-row"
+          className="bg-white dark:bg-gray-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-scale-in flex flex-col md:flex-row transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 关闭按钮 */}
@@ -335,10 +335,10 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
           </div>
 
           {/* 信息区域 */}
-          <div className="w-full md:w-96 flex flex-col bg-white">
+          <div className="w-full md:w-96 flex flex-col bg-white dark:bg-gray-800 transition-colors">
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2 break-words">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 break-words">
                   {currentImage.filename}
                 </h2>
               </div>
@@ -358,7 +358,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
                     </svg>
                     <div>
                       <p className="text-gray-500">拍摄时间</p>
-                      <p className="text-gray-900 font-medium">{formatDate(currentImage.takenAt)}</p>
+                      <p className="text-gray-900 dark:text-gray-100 font-medium">{formatDate(currentImage.takenAt)}</p>
                     </div>
                   </div>
                 </div>
@@ -378,19 +378,19 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
                     {currentImage.cameraMake && (
                       <div>
                         <p className="text-gray-500">制造商</p>
-                        <p className="text-gray-900 font-medium">{currentImage.cameraMake}</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-medium">{currentImage.cameraMake}</p>
                       </div>
                     )}
                     {currentImage.cameraModel && (
                       <div>
                         <p className="text-gray-500">型号</p>
-                        <p className="text-gray-900 font-medium">{currentImage.cameraModel}</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-medium">{currentImage.cameraModel}</p>
                       </div>
                     )}
                     {currentImage.resolution && (
                       <div>
                         <p className="text-gray-500">分辨率</p>
-                        <p className="text-gray-900 font-medium">{currentImage.resolution}</p>
+                        <p className="text-gray-900 dark:text-gray-100 font-medium">{currentImage.resolution}</p>
                       </div>
                     )}
                   </div>
@@ -408,7 +408,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
                 </h3>
                 <div className="text-sm">
                   <p className="text-gray-500 mb-1">GPS 坐标</p>
-                  <p className="text-gray-900 font-medium mb-3">{formatCoordinates(currentImage.latitude, currentImage.longitude)}</p>
+                  <p className="text-gray-900 dark:text-gray-100 font-medium mb-3">{formatCoordinates(currentImage.latitude, currentImage.longitude)}</p>
                   {currentImage.latitude && currentImage.longitude && (
                     <a
                       href={getGoogleMapsLink(currentImage.latitude, currentImage.longitude)}
@@ -441,7 +441,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
             </div>
 
             {/* 操作按钮区域 */}
-            <div className="border-t border-gray-200 p-6 space-y-3">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-6 space-y-3 transition-colors">
               {/* AI 分析按钮 */}
               <button
                 onClick={handleAnalyzeImage}
