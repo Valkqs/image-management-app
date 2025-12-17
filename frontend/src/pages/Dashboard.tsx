@@ -45,6 +45,7 @@ const Dashboard: React.FC = () => {
   const [searchMonth, setSearchMonth] = useState('');
   const [searchCamera, setSearchCamera] = useState('');
   const [useMCP, setUseMCP] = useState(false); // 是否使用MCP查询
+  const [autoAnalyze, setAutoAnalyze] = useState(false); // 上传后自动进行AI标签分析
 
   const { toasts, removeToast, success, error: showError } = useToast();
 
@@ -265,6 +266,8 @@ const Dashboard: React.FC = () => {
     validFiles.forEach(file => {
       formData.append('images', file);
     });
+    // 添加自动分析选项
+    formData.append('autoAnalyze', autoAnalyze ? 'true' : 'false');
     
     setUploading(true);
     try {
@@ -538,7 +541,24 @@ const Dashboard: React.FC = () => {
           </div>
 
           {selectedFiles && selectedFiles.length > 0 && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
+              {/* AI自动分析选项 */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="auto-analyze"
+                  checked={autoAnalyze}
+                  onChange={(e) => setAutoAnalyze(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <label 
+                  htmlFor="auto-analyze" 
+                  className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+                >
+                  上传后自动进行AI标签分析
+                </label>
+              </div>
+              
               <button
                 onClick={handleUpload}
                 disabled={uploading}

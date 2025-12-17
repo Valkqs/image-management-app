@@ -65,6 +65,12 @@ func (h *Handler) UploadImage(c *gin.Context) {
 		return
 	}
 	files := form.File["images"]
+	
+	// 获取 autoAnalyze 参数（是否上传后自动进行AI分析）
+	autoAnalyze := false
+	if values, ok := form.Value["autoAnalyze"]; ok && len(values) > 0 {
+		autoAnalyze = values[0] == "true"
+	}
 
 	originalPath := "uploads/images"
 	thumbPath := "uploads/thumbnails"
@@ -170,8 +176,10 @@ func (h *Handler) UploadImage(c *gin.Context) {
 			continue
 		}
 
-		// 异步触发 AI 分析（不阻塞上传响应）
-		h.AnalyzeImageAsync(image.ID, filePath)
+		// 如果启用了自动分析，异步触发 AI 分析（不阻塞上传响应）
+		if autoAnalyze {
+			h.AnalyzeImageAsync(image.ID, filePath)
+		}
 		successCount++
 	}
 
