@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import Register from './pages/Register';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -100,6 +100,17 @@ const Home: React.FC = () => {
   );
 };
 
+// 404 重定向组件
+const NotFoundRedirect: React.FC = () => {
+  const token = localStorage.getItem('token');
+  
+  // 如果用户已登录，重定向到 dashboard；否则重定向到首页
+  if (token) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return <Navigate to="/" replace />;
+};
+
 const App: React.FC = () => {
   return (
     <Router>
@@ -113,6 +124,8 @@ const App: React.FC = () => {
               <Dashboard />
             </ProtectedRoute>
           } />
+          {/* 404 路由 - 必须放在最后 */}
+          <Route path="*" element={<NotFoundRedirect />} />
         </Routes>
       </Layout>
     </Router>

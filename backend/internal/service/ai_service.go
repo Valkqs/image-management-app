@@ -17,60 +17,121 @@ import (
 
 // AIService AI 标签分析服务
 type AIService struct {
-	apiKey   string
-	client   *http.Client
+	apiKey    string
+	client    *http.Client
 	modelName string // 缓存模型名称
+	baseURL   string // API base URL
 }
 
-// ModelInfo 模型信息
-type ModelInfo struct {
-	Name        string   `json:"name"`
-	DisplayName string   `json:"displayName"`
-	Description string   `json:"description"`
-	SupportedMethods []string `json:"supportedGenerationMethods"`
+// ModelScopeRequest ModelScope API 请求结构（OpenAI 兼容格式）
+type ModelScopeRequest struct {
+	Model    string                  `json:"model"`
+	Messages []ModelScopeMessage     `json:"messages"`
+	Stream   bool                    `json:"stream,omitempty"`
 }
 
-// GeminiRequest Gemini API 请求结构
-type GeminiRequest struct {
-	Contents []GeminiContent `json:"contents"`
+// ModelScopeMessage 消息结构
+type ModelScopeMessage struct {
+	Role    string                  `json:"role"`
+	Content ModelScopeContent        `json:"content"` // 可以是字符串或数组
 }
 
-// GeminiContent 内容结构
-type GeminiContent struct {
-	Parts []GeminiPart `json:"parts"`
+// ModelScopeContent 内容类型，支持字符串或数组格式
+type ModelScopeContent struct {
+	Items []ModelScopeContentItem
+	Text  string
 }
 
-// GeminiPart 部分内容
-type GeminiPart struct {
-	Text string        `json:"text,omitempty"`
-	InlineData *GeminiInlineData `json:"inlineData,omitempty"`
+// MarshalJSON 自定义 JSON 序列化，始终序列化为数组格式（用于请求）
+func (c ModelScopeContent) MarshalJSON() ([]byte, error) {
+	// 如果 Items 不为空，使用 Items
+	if len(c.Items) > 0 {
+		return json.Marshal(c.Items)
+	}
+	// 如果只有 Text，转换为 Items 格式
+	if c.Text != "" {
+		return json.Marshal([]ModelScopeContentItem{
+			{
+				Type: "text",
+				Text: c.Text,
+			},
+		})
+	}
+	// 空内容返回空数组
+	return json.Marshal([]ModelScopeContentItem{})
 }
 
-// GeminiInlineData 内联数据（图片）
-type GeminiInlineData struct {
-	MimeType string `json:"mimeType"`
-	Data     string `json:"data"`
+// UnmarshalJSON 自定义 JSON 解析，支持字符串和数组两种格式
+func (c *ModelScopeContent) UnmarshalJSON(data []byte) error {
+	// 先尝试解析为字符串
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		c.Text = str
+		c.Items = []ModelScopeContentItem{
+			{
+				Type: "text",
+				Text: str,
+			},
+		}
+		return nil
+	}
+
+	// 如果不是字符串，尝试解析为数组
+	var items []ModelScopeContentItem
+	if err := json.Unmarshal(data, &items); err == nil {
+		c.Items = items
+		// 提取所有文本内容
+		for _, item := range items {
+			if item.Type == "text" {
+				c.Text += item.Text
+			}
+		}
+		return nil
+	}
+
+	return fmt.Errorf("content must be either string or array")
 }
 
-// GeminiResponse Gemini API 响应结构
-type GeminiResponse struct {
-	Candidates []GeminiCandidate `json:"candidates"`
+// ModelScopeContentItem 内容项（文本或图片）
+type ModelScopeContentItem struct {
+	Type     string              `json:"type"` // "text" 或 "image_url"
+	Text     string              `json:"text,omitempty"`
+	ImageURL *ModelScopeImageURL `json:"image_url,omitempty"`
 }
 
-// GeminiCandidate 候选响应
-type GeminiCandidate struct {
-	Content GeminiContent `json:"content"`
+// ModelScopeImageURL 图片URL结构
+type ModelScopeImageURL struct {
+	URL string `json:"url"` // 支持 data URI 格式：data:image/jpeg;base64,{base64}
+}
+
+// ModelScopeResponse ModelScope API 响应结构（OpenAI 兼容格式）
+type ModelScopeResponse struct {
+	Choices []ModelScopeChoice `json:"choices"`
+}
+
+// ModelScopeChoice 选择项
+type ModelScopeChoice struct {
+	Message ModelScopeMessage `json:"message"`
+	Delta   *ModelScopeMessage `json:"delta,omitempty"` // 用于流式响应
+}
+
+// ModelScopeStreamChunk 流式响应块
+type ModelScopeStreamChunk struct {
+	Choices []ModelScopeChoice `json:"choices"`
 }
 
 // NewAIService 创建新的 AI 服务实例
 func NewAIService() (*AIService, error) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
+	apiKey := os.Getenv("MODELSCOPE_ACCESS_TOKEN")
 	if apiKey == "" {
-		return nil, fmt.Errorf("GEMINI_API_KEY environment variable is not set")
+		return nil, fmt.Errorf("MODELSCOPE_ACCESS_TOKEN environment variable is not set")
 	}
 
 	// 从环境变量获取超时时间，默认60秒
-	timeoutStr := os.Getenv("GEMINI_TIMEOUT")
+	timeoutStr := os.Getenv("MODELSCOPE_TIMEOUT")
+	if timeoutStr == "" {
+		timeoutStr = os.Getenv("GEMINI_TIMEOUT") // 兼容旧的环境变量名
+	}
 	timeout := 60 * time.Second
 	if timeoutStr != "" {
 		if parsedTimeout, err := time.ParseDuration(timeoutStr); err == nil {
@@ -104,34 +165,30 @@ func NewAIService() (*AIService, error) {
 		}
 	}
 
+	// 获取模型名称，默认为 Qwen/QVQ-72B-Preview
+	modelName := os.Getenv("MODELSCOPE_MODEL")
+	if modelName == "" {
+		modelName = "Qwen/QVQ-72B-Preview" // 默认使用 Qwen 视觉模型
+	}
+	modelName = strings.TrimSpace(modelName)
+
+	// 获取 base URL
+	baseURL := os.Getenv("MODELSCOPE_BASE_URL")
+	if baseURL == "" {
+		baseURL = "https://api-inference.modelscope.cn/v1"
+	}
+
 	service := &AIService{
-		apiKey: apiKey,
+		apiKey:    apiKey,
+		modelName: modelName,
+		baseURL:   baseURL,
 		client: &http.Client{
 			Transport: transport,
 			Timeout:   timeout,
 		},
 	}
 
-	// 尝试检测可用的模型
-	modelName := os.Getenv("GEMINI_MODEL")
-	if modelName == "" {
-		// 自动检测可用的模型
-		detectedModel, err := service.detectAvailableModel()
-		if err != nil {
-			log.Printf("Failed to detect available model, using default: %v", err)
-			modelName = "gemini-2.5-flash" // 默认使用 flash 版本（更快）
-		} else {
-			modelName = detectedModel
-			log.Printf("Auto-detected available model: %s", modelName)
-		}
-	}
-	// 清理模型名称（移除可能的错误前缀）
-	modelName = strings.TrimSpace(modelName)
-	if strings.HasPrefix(modelName, "models/") {
-		modelName = strings.TrimPrefix(modelName, "models/")
-	}
-	service.modelName = modelName
-
+	log.Printf("Initialized ModelScope AI service with model: %s", modelName)
 	return service, nil
 }
 
@@ -148,13 +205,10 @@ func (s *AIService) AnalyzeImage(imagePath string) ([]string, error) {
 
 // AnalyzeImageFromBytes 从字节数据分析图片
 func (s *AIService) AnalyzeImageFromBytes(imageData []byte) ([]string, error) {
-	// 检查图片大小，Gemini API 限制为 20MB（base64 编码后）
-	// 如果图片太大，需要压缩
+	// 检查图片大小，限制为 20MB（base64 编码后）
 	maxSize := 20 * 1024 * 1024 // 20MB
 	if len(imageData) > maxSize {
 		log.Printf("Image too large (%d bytes), attempting to compress...", len(imageData))
-		// 尝试压缩图片（简单实现：如果超过限制，记录警告）
-		// 实际应用中可以使用图片压缩库
 		return nil, fmt.Errorf("image too large (%d bytes, max %d bytes). Please use a smaller image", len(imageData), maxSize)
 	}
 
@@ -195,23 +249,43 @@ func (s *AIService) AnalyzeImageFromBytes(imageData []byte) ([]string, error) {
 只返回标签，用中文逗号分隔，不要其他文字，不要编号，不要说明。
 例如：风景,自然,山脉,蓝天,户外`
 
-	// 构建 Gemini API 请求
-	request := GeminiRequest{
-		Contents: []GeminiContent{
+	// 构建 data URI 格式的图片 URL
+	imageDataURI := fmt.Sprintf("data:%s;base64,%s", mimeType, base64Image)
+
+	// 构建 ModelScope API 请求（OpenAI 兼容格式）
+	request := ModelScopeRequest{
+		Model: s.modelName,
+		Messages: []ModelScopeMessage{
 			{
-				Parts: []GeminiPart{
-					{
-						Text: prompt,
+				Role: "system",
+				Content: ModelScopeContent{
+					Items: []ModelScopeContentItem{
+						{
+							Type: "text",
+							Text: "You are a helpful assistant. You are Qwen developed by Alibaba. You should think step-by-step.",
+						},
 					},
-					{
-						InlineData: &GeminiInlineData{
-							MimeType: mimeType,
-							Data:     base64Image,
+				},
+			},
+			{
+				Role: "user",
+				Content: ModelScopeContent{
+					Items: []ModelScopeContentItem{
+						{
+							Type: "image_url",
+							ImageURL: &ModelScopeImageURL{
+								URL: imageDataURI,
+							},
+						},
+						{
+							Type: "text",
+							Text: prompt,
 						},
 					},
 				},
 			},
 		},
+		Stream: false,
 	}
 
 	// 序列化请求
@@ -220,21 +294,14 @@ func (s *AIService) AnalyzeImageFromBytes(imageData []byte) ([]string, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// 使用缓存的模型名称（在服务初始化时已检测）
-	modelName := s.modelName
-	if modelName == "" {
-		// 如果缓存为空，尝试从环境变量获取
-		modelName = os.Getenv("GEMINI_MODEL")
-		if modelName == "" {
-			modelName = "gemini-pro" // 最后的默认值
-		}
-	}
-	
-	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s", 
-		modelName, s.apiKey)
+	// 构建 API URL
+	apiURL := fmt.Sprintf("%s/chat/completions", s.baseURL)
 
 	// 创建 HTTP 请求，使用与 client 相同的超时时间
-	timeoutStr := os.Getenv("GEMINI_TIMEOUT")
+	timeoutStr := os.Getenv("MODELSCOPE_TIMEOUT")
+	if timeoutStr == "" {
+		timeoutStr = os.Getenv("GEMINI_TIMEOUT") // 兼容旧的环境变量名
+	}
 	timeout := 60 * time.Second
 	if timeoutStr != "" {
 		if parsedTimeout, err := time.ParseDuration(timeoutStr); err == nil {
@@ -251,22 +318,23 @@ func (s *AIService) AnalyzeImageFromBytes(imageData []byte) ([]string, error) {
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.apiKey))
 
 	// 发送请求
-	log.Printf("Calling Gemini API with model: %s (timeout: %v)", modelName, timeout)
+	log.Printf("Calling ModelScope API with model: %s (timeout: %v)", s.modelName, timeout)
 	startTime := time.Now()
 	resp, err := s.client.Do(req)
 	duration := time.Since(startTime)
 	
 	if err != nil {
-		log.Printf("Failed to call Gemini API after %v: %v", duration, err)
+		log.Printf("Failed to call ModelScope API after %v: %v", duration, err)
 		// 检查是否是超时错误
 		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("request timeout after %v. The image may be too large or network is slow. Try using a smaller image or increase GEMINI_TIMEOUT", timeout)
+			return nil, fmt.Errorf("request timeout after %v. The image may be too large or network is slow. Try using a smaller image or increase MODELSCOPE_TIMEOUT", timeout)
 		}
-		return nil, fmt.Errorf("failed to call Gemini API (network error): %w", err)
+		return nil, fmt.Errorf("failed to call ModelScope API (network error): %w", err)
 	}
-	log.Printf("Gemini API responded in %v", duration)
+	log.Printf("ModelScope API responded in %v", duration)
 	defer resp.Body.Close()
 
 	// 读取响应
@@ -277,32 +345,47 @@ func (s *AIService) AnalyzeImageFromBytes(imageData []byte) ([]string, error) {
 
 	// 检查 HTTP 状态码
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Gemini API error - Status: %s, Body: %s", resp.Status, string(responseBody))
-		return nil, fmt.Errorf("Gemini API returned error (status %d): %s", resp.StatusCode, string(responseBody))
+		log.Printf("ModelScope API error - Status: %s, Body: %s", resp.Status, string(responseBody))
+		return nil, handleModelScopeError(resp.StatusCode, responseBody, s.modelName)
 	}
 
 	// 解析响应
-	var geminiResp GeminiResponse
-	if err := json.Unmarshal(responseBody, &geminiResp); err != nil {
-		log.Printf("Failed to unmarshal Gemini response: %v, body: %s", err, string(responseBody))
-		return nil, fmt.Errorf("failed to parse Gemini API response: %w", err)
+	var modelScopeResp ModelScopeResponse
+	if err := json.Unmarshal(responseBody, &modelScopeResp); err != nil {
+		log.Printf("Failed to unmarshal ModelScope response: %v, body: %s", err, string(responseBody))
+		return nil, fmt.Errorf("failed to parse ModelScope API response: %w", err)
 	}
 
 	// 提取文本内容
-	if len(geminiResp.Candidates) == 0 {
-		log.Printf("No candidates in Gemini response: %s", string(responseBody))
-		return nil, fmt.Errorf("no candidates in Gemini response")
+	if len(modelScopeResp.Choices) == 0 {
+		log.Printf("No choices in ModelScope response: %s", string(responseBody))
+		return nil, fmt.Errorf("no choices in ModelScope response")
 	}
 
-	if len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		log.Printf("No parts in Gemini response: %s", string(responseBody))
-		return nil, fmt.Errorf("no content parts in Gemini response")
+	// 获取内容（可能是字符串或数组格式）
+	content := ""
+	if modelScopeResp.Choices[0].Message.Content.Text != "" {
+		// 字符串格式
+		content = modelScopeResp.Choices[0].Message.Content.Text
+	} else if len(modelScopeResp.Choices[0].Message.Content.Items) > 0 {
+		// 数组格式
+		for _, item := range modelScopeResp.Choices[0].Message.Content.Items {
+			if item.Type == "text" {
+				content += item.Text
+			}
+		}
 	}
 
-	content := strings.TrimSpace(geminiResp.Candidates[0].Content.Parts[0].Text)
+	content = strings.TrimSpace(content)
+	
 	if content == "" {
-		log.Printf("Empty text in Gemini response: %s", string(responseBody))
-		return nil, fmt.Errorf("empty text content from Gemini API")
+		log.Printf("No content in ModelScope response: %s", string(responseBody))
+		return nil, fmt.Errorf("no content in ModelScope response")
+	}
+	
+	if content == "" {
+		log.Printf("Empty text in ModelScope response: %s", string(responseBody))
+		return nil, fmt.Errorf("empty text content from ModelScope API")
 	}
 
 	// 解析返回的标签
@@ -354,74 +437,60 @@ func parseTags(content string) []string {
 	return result
 }
 
-// detectAvailableModel 检测可用的模型
-func (s *AIService) detectAvailableModel() (string, error) {
-	url := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models?key=%s", s.apiKey)
+// handleModelScopeError 处理 ModelScope API 错误响应，返回友好的错误信息
+func handleModelScopeError(statusCode int, responseBody []byte, modelName string) error {
+	// 尝试解析错误响应
+	var errorResp struct {
+		Errors struct {
+			Message   string `json:"message"`
+			RequestID string `json:"request_id"`
+		} `json:"errors"`
+		Error struct {
+			Message string `json:"message"`
+			Type    string `json:"type"`
+		} `json:"error"`
+	}
 	
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("failed to list models: %s", string(body))
-	}
-
-	var result struct {
-		Models []ModelInfo `json:"models"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", err
-	}
-
-	// 优先选择的模型列表（按优先级排序）
-	preferredModels := []string{
-		"gemini-1.5-pro",
-		"gemini-1.5-flash", 
-		"gemini-pro-vision",
-		"gemini-pro",
-	}
-
-	// 创建模型名称映射（去掉 models/ 前缀）
-	modelMap := make(map[string]string)
-	for _, model := range result.Models {
-		shortName := model.Name
-		if len(shortName) > 8 && shortName[:8] == "models/" {
-			shortName = shortName[8:]
+	errorMessage := ""
+	if err := json.Unmarshal(responseBody, &errorResp); err == nil {
+		if errorResp.Errors.Message != "" {
+			errorMessage = errorResp.Errors.Message
+		} else if errorResp.Error.Message != "" {
+			errorMessage = errorResp.Error.Message
 		}
-		
-		// 检查是否支持 generateContent
-		for _, method := range model.SupportedMethods {
-			if method == "generateContent" {
-				modelMap[shortName] = model.Name
-				break
+	}
+	
+	// 根据状态码提供更友好的错误信息
+	switch statusCode {
+	case http.StatusUnauthorized:
+		if errorMessage != "" {
+			if strings.Contains(errorMessage, "bind your Alibaba Cloud account") || 
+			   strings.Contains(errorMessage, "绑定") ||
+			   strings.Contains(errorMessage, "实名认证") {
+				return fmt.Errorf("认证失败：%s\n\n解决方案：\n1. 访问 https://modelscope.cn 登录账号\n2. 绑定阿里云账号\n3. 完成实名认证\n4. 重新获取 Access Token：https://modelscope.cn/my/myaccesstoken", errorMessage)
 			}
+			return fmt.Errorf("认证失败 (401)：%s\n\n请检查 MODELSCOPE_ACCESS_TOKEN 是否正确，或访问 https://modelscope.cn/my/myaccesstoken 重新获取", errorMessage)
 		}
-	}
-
-	// 查找第一个可用的优先模型
-	for _, preferred := range preferredModels {
-		if fullName, exists := modelMap[preferred]; exists {
-			log.Printf("Found available model: %s (full name: %s)", preferred, fullName)
-			return preferred, nil
+		return fmt.Errorf("认证失败 (401)：请检查 MODELSCOPE_ACCESS_TOKEN 是否正确，或访问 https://modelscope.cn/my/myaccesstoken 重新获取。响应：%s", string(responseBody))
+	case http.StatusForbidden:
+		return fmt.Errorf("访问被拒绝 (403)：%s。请确认账号已完成实名认证并绑定了阿里云账号", errorMessage)
+	case http.StatusBadRequest:
+		return fmt.Errorf("请求错误 (400)：%s", errorMessage)
+	case http.StatusNotFound:
+		return fmt.Errorf("模型未找到 (404)：请检查 MODELSCOPE_MODEL 环境变量，当前模型：%s", modelName)
+	default:
+		if errorMessage != "" {
+			return fmt.Errorf("ModelScope API 错误 (status %d)：%s", statusCode, errorMessage)
 		}
+		return fmt.Errorf("ModelScope API 返回错误 (status %d)：%s", statusCode, string(responseBody))
 	}
+}
 
-	// 如果没有找到优先模型，返回第一个支持 generateContent 的模型
-	for shortName, fullName := range modelMap {
-		log.Printf("Using first available model: %s (full name: %s)", shortName, fullName)
-		return shortName, nil
-	}
-
-	return "", fmt.Errorf("no available models found")
+// detectAvailableModel 检测可用的模型（已废弃，ModelScope 不需要检测）
+// 保留此函数以保持接口兼容性，但不再使用
+func (s *AIService) detectAvailableModel() (string, error) {
+	// ModelScope 不需要检测模型，直接返回默认值
+	return "Qwen/QVQ-72B-Preview", nil
 }
 
 // IsAvailable 检查 AI 服务是否可用
@@ -450,7 +519,7 @@ func (s *AIService) ParseNaturalLanguageQuery(userQuery string, availableTags []
 		
 		if isNetworkError {
 			log.Printf("Primary model '%s' failed with error: %v, trying fallback models...", s.modelName, err)
-			fallbackModels := []string{"gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"}
+			fallbackModels := []string{"Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-32B-Instruct", "Qwen/Qwen2.5-14B-Instruct"}
 			for _, fallbackModel := range fallbackModels {
 				if fallbackModel == s.modelName {
 					continue // 跳过当前已失败的模型
@@ -505,17 +574,50 @@ func (s *AIService) parseNaturalLanguageQueryWithModel(userQuery string, availab
 
 只返回JSON，不要其他文字，不要使用markdown代码块。`, userQuery, tagsInfo)
 
-	// 构建 Gemini API 请求
-	request := GeminiRequest{
-		Contents: []GeminiContent{
+	// 使用传入的模型名称，如果没有则使用默认值
+	if modelName == "" {
+		modelName = s.modelName
+		if modelName == "" {
+			modelName = os.Getenv("MODELSCOPE_MODEL")
+			if modelName == "" {
+				modelName = "Qwen/Qwen2.5-7B-Instruct" // 默认使用文本模型
+			}
+		}
+	}
+	
+	// 验证模型名称
+	modelName = strings.TrimSpace(modelName)
+	
+	log.Printf("Using model: %s for query parsing", modelName)
+
+	// 构建 ModelScope API 请求（OpenAI 兼容格式）
+	request := ModelScopeRequest{
+		Model: modelName,
+		Messages: []ModelScopeMessage{
 			{
-				Parts: []GeminiPart{
-					{
-						Text: prompt,
+				Role: "system",
+				Content: ModelScopeContent{
+					Items: []ModelScopeContentItem{
+						{
+							Type: "text",
+							Text: "You are a helpful assistant. You are Qwen developed by Alibaba.",
+						},
+					},
+				},
+			},
+			{
+				Role: "user",
+				Content: ModelScopeContent{
+					Items: []ModelScopeContentItem{
+						{
+							Type: "text",
+							Text: prompt,
+						},
 					},
 				},
 			},
 		},
+		Stream: false,
 	}
 
 	// 序列化请求
@@ -524,30 +626,14 @@ func (s *AIService) parseNaturalLanguageQueryWithModel(userQuery string, availab
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	// 使用传入的模型名称，如果没有则使用默认值
-	if modelName == "" {
-		modelName = s.modelName
-		if modelName == "" {
-			modelName = os.Getenv("GEMINI_MODEL")
-			if modelName == "" {
-				modelName = "gemini-2.5-flash" // 默认使用 flash 版本（更快）
-			}
-		}
-	}
-	
-	// 验证模型名称（移除可能的错误前缀）
-	modelName = strings.TrimSpace(modelName)
-	if strings.HasPrefix(modelName, "models/") {
-		modelName = strings.TrimPrefix(modelName, "models/")
-	}
-	
-	log.Printf("Using model: %s for query parsing", modelName)
-
-	apiURL := fmt.Sprintf("https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
-		modelName, s.apiKey)
+	// 构建 API URL
+	apiURL := fmt.Sprintf("%s/chat/completions", s.baseURL)
 
 	// 创建 HTTP 请求
-	timeoutStr := os.Getenv("GEMINI_TIMEOUT")
+	timeoutStr := os.Getenv("MODELSCOPE_TIMEOUT")
+	if timeoutStr == "" {
+		timeoutStr = os.Getenv("GEMINI_TIMEOUT") // 兼容旧的环境变量名
+	}
 	timeout := 60 * time.Second
 	if timeoutStr != "" {
 		if parsedTimeout, err := time.ParseDuration(timeoutStr); err == nil {
@@ -564,25 +650,26 @@ func (s *AIService) parseNaturalLanguageQueryWithModel(userQuery string, availab
 	}
 
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.apiKey))
 
 	// 发送请求
-	log.Printf("Calling Gemini API for query parsing (timeout: %v)", timeout)
+	log.Printf("Calling ModelScope API for query parsing (timeout: %v)", timeout)
 	startTime := time.Now()
 	resp, err := s.client.Do(req)
 	duration := time.Since(startTime)
 
 	if err != nil {
-		log.Printf("Failed to call Gemini API after %v: %v", duration, err)
+		log.Printf("Failed to call ModelScope API after %v: %v", duration, err)
 		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("request timeout after %v. The request may be too large or network is slow. Try increasing GEMINI_TIMEOUT", timeout)
+			return nil, fmt.Errorf("request timeout after %v. The request may be too large or network is slow. Try increasing MODELSCOPE_TIMEOUT", timeout)
 		}
 		// EOF 错误通常表示连接被关闭，可能是网络问题或代理配置问题
 		if strings.Contains(err.Error(), "EOF") {
 			return nil, fmt.Errorf("connection closed unexpectedly (EOF) when calling model '%s'. This may be caused by: 1) Network connectivity issues, 2) Proxy configuration problems, 3) API rate limiting. Please check your network and proxy settings. Error: %w", modelName, err)
 		}
-		return nil, fmt.Errorf("failed to call Gemini API: %w", err)
+		return nil, fmt.Errorf("failed to call ModelScope API: %w", err)
 	}
-	log.Printf("Gemini API responded in %v", duration)
+	log.Printf("ModelScope API responded in %v", duration)
 	defer resp.Body.Close()
 
 	// 读取响应
@@ -593,29 +680,40 @@ func (s *AIService) parseNaturalLanguageQueryWithModel(userQuery string, availab
 
 	// 检查 HTTP 状态码
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Gemini API error - Status: %s, Body: %s", resp.Status, string(responseBody))
-		return nil, fmt.Errorf("Gemini API returned error (status %d): %s", resp.StatusCode, string(responseBody))
+		log.Printf("ModelScope API error - Status: %s, Body: %s", resp.Status, string(responseBody))
+		return nil, handleModelScopeError(resp.StatusCode, responseBody, modelName)
 	}
 
 	// 解析响应
-	var geminiResp GeminiResponse
-	if err := json.Unmarshal(responseBody, &geminiResp); err != nil {
-		log.Printf("Failed to unmarshal Gemini response: %v, body: %s", err, string(responseBody))
-		return nil, fmt.Errorf("failed to parse Gemini API response: %w", err)
+	var modelScopeResp ModelScopeResponse
+	if err := json.Unmarshal(responseBody, &modelScopeResp); err != nil {
+		log.Printf("Failed to unmarshal ModelScope response: %v, body: %s", err, string(responseBody))
+		return nil, fmt.Errorf("failed to parse ModelScope API response: %w", err)
 	}
 
 	// 提取文本内容
-	if len(geminiResp.Candidates) == 0 {
-		return nil, fmt.Errorf("no candidates in Gemini response")
+	if len(modelScopeResp.Choices) == 0 {
+		return nil, fmt.Errorf("no choices in ModelScope response")
 	}
 
-	if len(geminiResp.Candidates[0].Content.Parts) == 0 {
-		return nil, fmt.Errorf("no content parts in Gemini response")
+	// 获取内容（可能是字符串或数组格式）
+	content := ""
+	if modelScopeResp.Choices[0].Message.Content.Text != "" {
+		// 字符串格式
+		content = modelScopeResp.Choices[0].Message.Content.Text
+	} else if len(modelScopeResp.Choices[0].Message.Content.Items) > 0 {
+		// 数组格式
+		for _, item := range modelScopeResp.Choices[0].Message.Content.Items {
+			if item.Type == "text" {
+				content += item.Text
+			}
+		}
 	}
 
-	content := strings.TrimSpace(geminiResp.Candidates[0].Content.Parts[0].Text)
+	content = strings.TrimSpace(content)
+	
 	if content == "" {
-		return nil, fmt.Errorf("empty text content from Gemini API")
+		return nil, fmt.Errorf("empty text content from ModelScope API")
 	}
 
 	// 尝试提取JSON（可能包含markdown代码块）

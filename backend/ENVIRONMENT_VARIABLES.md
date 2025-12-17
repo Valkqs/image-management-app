@@ -28,22 +28,28 @@ $env:JWT_SECRET="your_very_long_and_secure_jwt_secret_key_here"
 
 ### AI 标签分析配置（可选）
 ```powershell
-# Google Gemini API Key（用于 AI 标签分析功能）
-# 获取方式：访问 https://makersuite.google.com/app/apikey 或 https://aistudio.google.com/app/apikey
-$env:GEMINI_API_KEY="your-gemini-api-key-here"
+# ModelScope Access Token（用于 AI 标签分析功能）
+# 获取方式：访问 https://modelscope.cn/my/myaccesstoken
+# 注意：账号注册后需绑定阿里云账号，并且通过实名认证后才可使用 API-Inference
+$env:MODELSCOPE_ACCESS_TOKEN="your-modelscope-access-token-here"
 
-# Gemini 模型名称（可选，默认为 gemini-pro-vision）
-# 可选值：
-#   - gemini-pro-vision（支持图片，免费，推荐）
-#   - gemini-pro（文本模型，不支持图片）
-#   - gemini-1.5-pro（更准确，需要配额）
-$env:GEMINI_MODEL="gemini-pro-vision"
+# ModelScope 模型名称（可选，默认为 Qwen/QVQ-72B-Preview）
+# 视觉模型推荐：
+#   - Qwen/QVQ-72B-Preview（视觉模型，支持图片分析，推荐）
+#   - Qwen/Qwen-VL-Max（视觉模型）
+# 文本模型（用于自然语言查询解析）：
+#   - Qwen/Qwen2.5-7B-Instruct（文本模型，用于查询解析）
+#   - Qwen/Qwen2.5-Coder-32B-Instruct（代码模型）
+$env:MODELSCOPE_MODEL="Qwen/QVQ-72B-Preview"
+
+# ModelScope API Base URL（可选，默认为 https://api-inference.modelscope.cn/v1）
+$env:MODELSCOPE_BASE_URL="https://api-inference.modelscope.cn/v1"
 
 # API 请求超时时间（可选，默认为 60s）
 # 如果遇到超时错误，可以增加这个值，例如：120s, 180s
-$env:GEMINI_TIMEOUT="60s"
+$env:MODELSCOPE_TIMEOUT="60s"
 
-# HTTP/HTTPS 代理（可选，如果无法直接访问 Google API）
+# HTTP/HTTPS 代理（可选，如果无法直接访问 ModelScope API）
 # 格式：http://proxy-host:port 或 https://proxy-host:port
 # 例如：http://127.0.0.1:7890（Clash/V2Ray 等代理工具）
 $env:HTTP_PROXY="http://127.0.0.1:7890"

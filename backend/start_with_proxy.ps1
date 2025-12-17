@@ -6,10 +6,11 @@ Write-Host "  Image Management System - Backend" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Check if GEMINI_API_KEY is set
-if (-not $env:GEMINI_API_KEY) {
-    Write-Host "WARNING: GEMINI_API_KEY is not set" -ForegroundColor Yellow
-    Write-Host "  Please set: `$env:GEMINI_API_KEY='your-api-key'" -ForegroundColor Yellow
+# Check if MODELSCOPE_ACCESS_TOKEN is set
+if (-not $env:MODELSCOPE_ACCESS_TOKEN) {
+    Write-Host "WARNING: MODELSCOPE_ACCESS_TOKEN is not set" -ForegroundColor Yellow
+    Write-Host "  Please set: `$env:MODELSCOPE_ACCESS_TOKEN='your-access-token'" -ForegroundColor Yellow
+    Write-Host "  Get your token from: https://modelscope.cn/my/myaccesstoken" -ForegroundColor Yellow
     Write-Host ""
 }
 
@@ -24,15 +25,27 @@ Write-Host "  HTTPS_PROXY: $env:HTTPS_PROXY" -ForegroundColor Gray
 Write-Host ""
 
 # Set timeout (optional)
-if (-not $env:GEMINI_TIMEOUT) {
-    $env:GEMINI_TIMEOUT="120s"
-    Write-Host "Setting default timeout: $env:GEMINI_TIMEOUT" -ForegroundColor Gray
+if (-not $env:MODELSCOPE_TIMEOUT) {
+    if (-not $env:GEMINI_TIMEOUT) {
+        $env:MODELSCOPE_TIMEOUT="120s"
+        Write-Host "Setting default timeout: $env:MODELSCOPE_TIMEOUT" -ForegroundColor Gray
+    } else {
+        # 兼容旧的环境变量名
+        $env:MODELSCOPE_TIMEOUT=$env:GEMINI_TIMEOUT
+        Write-Host "Using GEMINI_TIMEOUT as MODELSCOPE_TIMEOUT: $env:MODELSCOPE_TIMEOUT" -ForegroundColor Gray
+    }
 }
 
 # Set model (optional)
-if (-not $env:GEMINI_MODEL) {
-    $env:GEMINI_MODEL="gemini-2.5-flash"
-    Write-Host "Setting default model: $env:GEMINI_MODEL" -ForegroundColor Gray
+if (-not $env:MODELSCOPE_MODEL) {
+    $env:MODELSCOPE_MODEL="Qwen/QVQ-72B-Preview"
+    Write-Host "Setting default model: $env:MODELSCOPE_MODEL" -ForegroundColor Gray
+}
+
+# Set base URL (optional)
+if (-not $env:MODELSCOPE_BASE_URL) {
+    $env:MODELSCOPE_BASE_URL="https://api-inference.modelscope.cn/v1"
+    Write-Host "Setting default base URL: $env:MODELSCOPE_BASE_URL" -ForegroundColor Gray
 }
 
 Write-Host ""

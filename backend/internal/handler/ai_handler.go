@@ -34,7 +34,7 @@ func (h *Handler) AnalyzeImage(c *gin.Context) {
 	if err != nil {
 		log.Printf("Failed to create AI service: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "AI service is not available. Please check GEMINI_API_KEY environment variable.",
+			"error": "AI service is not available. Please check MODELSCOPE_ACCESS_TOKEN environment variable.",
 		})
 		return
 	}
