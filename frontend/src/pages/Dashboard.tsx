@@ -36,6 +36,9 @@ const Dashboard: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<Image | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedImageIDs, setSelectedImageIDs] = useState<Set<number>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // 搜索和筛选状态
   const [searchTags, setSearchTags] = useState('');
@@ -44,6 +47,52 @@ const Dashboard: React.FC = () => {
   const [useMCP, setUseMCP] = useState(false); // 是否使用MCP查询
 
   const { toasts, removeToast, success, error: showError } = useToast();
+
+  // 验证文件是否为真正的图片文件（通过检查文件头）
+  const isValidImageFile = async (file: File): Promise<boolean> => {
+    // 首先检查 MIME 类型
+    if (!file.type.startsWith('image/')) {
+      return false;
+    }
+
+    // 读取文件头（前几个字节）来验证文件类型
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const arrayBuffer = e.target?.result as ArrayBuffer;
+        if (!arrayBuffer || arrayBuffer.byteLength < 4) {
+          resolve(false);
+          return;
+        }
+
+        const bytes = new Uint8Array(arrayBuffer);
+        
+        // 检查常见的图片文件头
+        // JPEG: FF D8 FF
+        if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+          resolve(true);
+          return;
+        }
+        
+        // PNG: 89 50 4E 47
+        if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+          resolve(true);
+          return;
+        }
+        
+        // GIF: 47 49 46 38 (GIF8)
+        if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+          resolve(true);
+          return;
+        }
+        
+        resolve(false);
+      };
+      reader.onerror = () => resolve(false);
+      // 只读取前 12 个字节就足够了
+      reader.readAsArrayBuffer(file.slice(0, 12));
+    });
+  };
 
   // 获取图片列表的函数
   const fetchImages = async (tags?: string, month?: string, camera?: string) => {
@@ -80,7 +129,63 @@ const Dashboard: React.FC = () => {
 
   // 应用搜索筛选
   const handleSearch = () => {
+    setSelectedImageIDs(new Set()); // 清空选择
     fetchImages(searchTags, searchMonth, searchCamera);
+  };
+
+  // 切换图片选择状态
+  const toggleImageSelection = (imageID: number) => {
+    const newSelected = new Set(selectedImageIDs);
+    if (newSelected.has(imageID)) {
+      newSelected.delete(imageID);
+    } else {
+      newSelected.add(imageID);
+    }
+    setSelectedImageIDs(newSelected);
+  };
+
+  // 全选/取消全选
+  const toggleSelectAll = () => {
+    if (selectedImageIDs.size === images.length) {
+      setSelectedImageIDs(new Set());
+    } else {
+      setSelectedImageIDs(new Set(images.map(img => img.ID)));
+    }
+  };
+
+  // 批量删除图片
+  const handleBatchDelete = async () => {
+    if (selectedImageIDs.size === 0) {
+      showError('请先选择要删除的图片');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const imageIDs = Array.from(selectedImageIDs);
+      console.log('Deleting image IDs:', imageIDs);
+      const response = await apiClient.post('/images/batch/delete', { imageIDs });
+      
+      const data = response.data as any;
+      console.log('Delete response:', data);
+      if (data.success > 0) {
+        success(`成功删除 ${data.success} 张图片！`);
+        setSelectedImageIDs(new Set());
+        setShowDeleteConfirm(false);
+        // 重新获取图片列表
+        fetchImages(searchTags, searchMonth, searchCamera);
+      }
+      if (data.failed > 0) {
+        showError(`有 ${data.failed} 张图片删除失败`);
+      }
+    } catch (error: any) {
+      console.error('Batch delete failed:', error);
+      console.error('Error response:', error.response?.data);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || '批量删除失败，请稍后重试';
+      showError(errorMessage);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // 清空筛选
@@ -91,8 +196,42 @@ const Dashboard: React.FC = () => {
     fetchImages();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedFiles(e.target.files);
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) {
+      setSelectedFiles(null);
+      return;
+    }
+
+    // 验证所有文件是否为真正的图片
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const isValid = await isValidImageFile(file);
+      if (isValid) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(file.name);
+      }
+    }
+
+    if (invalidFiles.length > 0) {
+      showError(`以下文件不是有效的图片文件，已跳过: ${invalidFiles.join(', ')}`);
+    }
+
+    if (validFiles.length > 0) {
+      // 创建新的 FileList
+      const dataTransfer = new DataTransfer();
+      validFiles.forEach(file => dataTransfer.items.add(file));
+      setSelectedFiles(dataTransfer.files);
+    } else {
+      setSelectedFiles(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleUpload = async () => {
@@ -101,26 +240,49 @@ const Dashboard: React.FC = () => {
       return;
     }
     
-    const formData = new FormData();
+    // 再次验证所有文件（双重验证确保安全）
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+
     for (let i = 0; i < selectedFiles.length; i++) {
-      formData.append('images', selectedFiles[i]);
+      const file = selectedFiles[i];
+      const isValid = await isValidImageFile(file);
+      if (isValid) {
+        validFiles.push(file);
+      } else {
+        invalidFiles.push(file.name);
+      }
     }
+
+    if (invalidFiles.length > 0) {
+      showError(`以下文件不是有效的图片文件，无法上传: ${invalidFiles.join(', ')}`);
+      if (validFiles.length === 0) {
+        return;
+      }
+    }
+    
+    const formData = new FormData();
+    validFiles.forEach(file => {
+      formData.append('images', file);
+    });
     
     setUploading(true);
     try {
       await apiClient.post('/images', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      success(`成功上传 ${selectedFiles.length} 张图片！`);
+      success(`成功上传 ${validFiles.length} 张图片！`);
       setSelectedFiles(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
       // 上传后重新获取图片，保持当前的搜索筛选状态
+      setSelectedImageIDs(new Set()); // 清空选择
       fetchImages(searchTags, searchMonth, searchCamera);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload failed:', error);
-      showError('上传失败，请稍后重试');
+      const errorMessage = error.response?.data?.error || '上传失败，请稍后重试';
+      showError(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -144,21 +306,37 @@ const Dashboard: React.FC = () => {
     e.stopPropagation();
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
 
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      // 创建新的 DataTransfer 对象来设置文件
-      const dataTransfer = new DataTransfer();
-      Array.from(files).forEach(file => {
-        if (file.type.startsWith('image/')) {
-          dataTransfer.items.add(file);
+      // 验证所有文件是否为真正的图片
+      const validFiles: File[] = [];
+      const invalidFiles: string[] = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const isValid = await isValidImageFile(file);
+        if (isValid) {
+          validFiles.push(file);
+        } else {
+          invalidFiles.push(file.name);
         }
-      });
-      setSelectedFiles(dataTransfer.files);
+      }
+
+      if (invalidFiles.length > 0) {
+        showError(`以下文件不是有效的图片文件，已跳过: ${invalidFiles.join(', ')}`);
+      }
+
+      if (validFiles.length > 0) {
+        // 创建新的 DataTransfer 对象来设置文件
+        const dataTransfer = new DataTransfer();
+        validFiles.forEach(file => dataTransfer.items.add(file));
+        setSelectedFiles(dataTransfer.files);
+      }
     }
   };
 
@@ -390,7 +568,33 @@ const Dashboard: React.FC = () => {
         {/* 图片画廊 */}
         <div className="card p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">图片画廊</h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">图片画廊</h2>
+              {!loading && images.length > 0 && (
+                <>
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200">
+                    <input
+                      type="checkbox"
+                      checked={selectedImageIDs.size === images.length && images.length > 0}
+                      onChange={toggleSelectAll}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                    />
+                    <span>全选</span>
+                  </label>
+                  {selectedImageIDs.size > 0 && (
+                    <button
+                      onClick={() => setShowDeleteConfirm(true)}
+                      className="btn btn-danger text-sm flex items-center gap-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      删除选中 ({selectedImageIDs.size})
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
             {!loading && (
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 共 {images.length} 张图片
@@ -411,11 +615,27 @@ const Dashboard: React.FC = () => {
               {images.map(image => (
                 <div 
                   key={image.ID} 
-                  className="group relative bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
+                  className="group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-300 cursor-pointer"
                   onClick={() => setSelectedImage(image)}
                 >
+                  {/* 复选框 */}
+                  <div 
+                    className="absolute top-2 left-2 z-10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedImageIDs.has(image.ID)}
+                        onChange={() => toggleImageSelection(image.ID)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                      />
+                    </label>
+                  </div>
+                  
                   {/* 图片容器 */}
-                  <div className="aspect-square overflow-hidden bg-gray-100">
+                  <div className="aspect-square overflow-hidden bg-gray-100 dark:bg-gray-700">
                     <img 
                       src={`http://localhost:8080/${image.thumbnailPath}?v=${image.ID}`} 
                       alt={image.filename} 
@@ -443,13 +663,13 @@ const Dashboard: React.FC = () => {
                         {image.Tags.slice(0, 3).map(tag => (
                           <span 
                             key={tag.ID}
-                            className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-medium"
+                            className="inline-flex items-center px-2 py-1 rounded-md bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium"
                           >
                             {tag.name}
                           </span>
                         ))}
                         {image.Tags.length > 3 && (
-                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-medium">
+                          <span className="inline-flex items-center px-2 py-1 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-medium">
                             +{image.Tags.length - 3}
                           </span>
                         )}
@@ -458,8 +678,16 @@ const Dashboard: React.FC = () => {
                   </div>
 
                   {/* 悬浮时的查看按钮 */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <button className="btn btn-primary shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                  <div 
+                    className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none"
+                  >
+                    <button 
+                      className="btn btn-primary shadow-lg transform scale-90 group-hover:scale-100 transition-transform pointer-events-auto"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImage(image);
+                      }}
+                    >
                       查看详情
                     </button>
                   </div>
@@ -468,18 +696,64 @@ const Dashboard: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <p className="text-gray-600 font-medium mb-2">还没有图片</p>
-              <p className="text-sm text-gray-500">上传您的第一张图片开始吧！</p>
+              <p className="text-gray-600 dark:text-gray-400 font-medium mb-2">还没有图片</p>
+              <p className="text-sm text-gray-500 dark:text-gray-500">上传您的第一张图片开始吧！</p>
             </div>
           )}
         </div>
       </div>
       
+      {/* 批量删除确认对话框 */}
+      {showDeleteConfirm && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div 
+            className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              确认删除
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              确定要删除选中的 {selectedImageIDs.size} 张图片吗？此操作无法撤销。
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="btn btn-outline"
+                disabled={isDeleting}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleBatchDelete}
+                className="btn btn-danger"
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    删除中...
+                  </>
+                ) : (
+                  '确认删除'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 图片详情模态框 */}
       {selectedImage && (
         <ImageModal
@@ -488,7 +762,10 @@ const Dashboard: React.FC = () => {
           isOpen={!!selectedImage}
           onClose={() => setSelectedImage(null)}
           // 更新图片后保持当前的搜索筛选状态
-          onImageUpdate={() => fetchImages(searchTags, searchMonth, searchCamera)}
+          onImageUpdate={() => {
+            setSelectedImageIDs(new Set()); // 清空选择
+            fetchImages(searchTags, searchMonth, searchCamera);
+          }}
         />
       )}
     </>

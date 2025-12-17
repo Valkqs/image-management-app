@@ -71,8 +71,57 @@ func (h *Handler) UploadImage(c *gin.Context) {
 	os.MkdirAll(originalPath, os.ModePerm)
 	os.MkdirAll(thumbPath, os.ModePerm)
 
+	var successCount int
+	var failedFiles []string
+	var errors []string
+
 	for _, file := range files {
+		// 验证文件是否为真正的图片文件
+		// 先打开文件进行验证（不保存到磁盘）
+		openedFile, err := file.Open()
+		if err != nil {
+			log.Printf("Error opening file %s: %v", file.Filename, err)
+			failedFiles = append(failedFiles, file.Filename)
+			errors = append(errors, fmt.Sprintf("无法打开文件 %s: %v", file.Filename, err))
+			continue
+		}
+
+		// 尝试解码图片来验证是否为有效的图片文件
+		_, format, err := image.DecodeConfig(openedFile)
+		openedFile.Close()
+		if err != nil {
+			log.Printf("File %s is not a valid image file: %v", file.Filename, err)
+			failedFiles = append(failedFiles, file.Filename)
+			errors = append(errors, fmt.Sprintf("文件 %s 不是有效的图片文件", file.Filename))
+			continue
+		}
+
+		// 验证格式是否支持
+		supportedFormats := map[string]bool{
+			"jpeg": true,
+			"jpg":  true,
+			"png":  true,
+			"gif":  true,
+		}
+		if !supportedFormats[format] {
+			log.Printf("Unsupported image format %s for file %s", format, file.Filename)
+			failedFiles = append(failedFiles, file.Filename)
+			errors = append(errors, fmt.Sprintf("文件 %s 的格式 %s 不受支持，仅支持 JPEG、PNG、GIF 格式", file.Filename, format))
+			continue
+		}
+
 		extension := filepath.Ext(file.Filename)
+		// 如果文件扩展名与检测到的格式不匹配，使用检测到的格式
+		if extension == "" {
+			switch format {
+			case "jpeg", "jpg":
+				extension = ".jpg"
+			case "png":
+				extension = ".png"
+			case "gif":
+				extension = ".gif"
+			}
+		}
 		newFileName := fmt.Sprintf("%d-%d%s", userID, time.Now().UnixNano(), extension)
 		filePath := filepath.Join(originalPath, newFileName)
 
@@ -123,9 +172,29 @@ func (h *Handler) UploadImage(c *gin.Context) {
 
 		// 异步触发 AI 分析（不阻塞上传响应）
 		h.AnalyzeImageAsync(image.ID, filePath)
+		successCount++
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d files processed.", len(files))})
+	// 返回处理结果
+	if successCount == 0 && len(failedFiles) > 0 {
+		// 所有文件都失败了
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "所有文件都验证失败",
+			"details": errors,
+		})
+		return
+	}
+
+	response := gin.H{
+		"message":     fmt.Sprintf("成功处理 %d 个文件", successCount),
+		"success":     successCount,
+		"total":       len(files),
+	}
+	if len(failedFiles) > 0 {
+		response["failed"] = failedFiles
+		response["errors"] = errors
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 // getImageResolution 获取图片的分辨率（宽度x高度）
@@ -366,6 +435,99 @@ func (h *Handler) DeleteImage(c *gin.Context) {
 		"message": "Image deleted successfully",
 		"imageID": imageID,
 	})
+}
+
+// DeleteImagesBatch 批量删除图片
+func (h *Handler) DeleteImagesBatch(c *gin.Context) {
+	userID_i, _ := c.Get("userID")
+	userID := userID_i.(uint)
+
+	// 接收要删除的图片ID列表
+	var input struct {
+		ImageIDs []uint `json:"imageIDs" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: imageIDs is required"})
+		return
+	}
+
+	if len(input.ImageIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No image IDs provided"})
+		return
+	}
+
+	var successCount int
+	var failedCount int
+	var failedIDs []uint
+	var errors []string
+
+	// 查询所有属于当前用户的图片
+	var images []model.Image
+	if err := h.DB.Where("id IN ? AND user_id = ?", input.ImageIDs, userID).Find(&images).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query images"})
+		return
+	}
+
+	// 检查是否有未找到的图片ID
+	foundIDs := make(map[uint]bool)
+	for _, img := range images {
+		foundIDs[img.ID] = true
+	}
+
+	// 删除每个图片的文件和数据库记录
+	for _, image := range images {
+		// 删除文件系统中的原始图片
+		if err := os.Remove(image.FilePath); err != nil {
+			log.Printf("Warning: Failed to delete original image file %s: %v", image.FilePath, err)
+			// 继续删除，不中止操作
+		}
+
+		// 删除缩略图
+		if image.ThumbnailPath != "" && image.ThumbnailPath != image.FilePath {
+			if err := os.Remove(image.ThumbnailPath); err != nil {
+				log.Printf("Warning: Failed to delete thumbnail file %s: %v", image.ThumbnailPath, err)
+			}
+		}
+
+		// 删除数据库中的记录
+		if err := h.DB.Select("Tags").Delete(&image).Error; err != nil {
+			log.Printf("Failed to delete image %d from database: %v", image.ID, err)
+			failedCount++
+			failedIDs = append(failedIDs, image.ID)
+			errors = append(errors, fmt.Sprintf("图片 %d 删除失败: %v", image.ID, err))
+		} else {
+			successCount++
+		}
+	}
+
+	// 检查是否有请求删除但不存在的图片ID
+	for _, id := range input.ImageIDs {
+		if !foundIDs[id] {
+			failedCount++
+			failedIDs = append(failedIDs, id)
+			errors = append(errors, fmt.Sprintf("图片 %d 不存在或无权访问", id))
+		}
+	}
+
+	// 返回结果
+	response := gin.H{
+		"message":     fmt.Sprintf("成功删除 %d 张图片", successCount),
+		"success":     successCount,
+		"failed":      failedCount,
+		"total":       len(input.ImageIDs),
+	}
+	if failedCount > 0 {
+		response["failedIDs"] = failedIDs
+		response["errors"] = errors
+	}
+
+	if successCount == 0 {
+		c.JSON(http.StatusBadRequest, response)
+	} else if failedCount > 0 {
+		c.JSON(http.StatusPartialContent, response) // 部分成功
+	} else {
+		c.JSON(http.StatusOK, response)
+	}
 }
 
 // EditImage 编辑图片（裁剪和色调调整）

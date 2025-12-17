@@ -83,11 +83,14 @@ func main() {
             authorized.GET("/images", h.GetUserImages)
 			// 其他需要保护的路由，例如图片上传
 			// authorized.POST("/images", h.UploadImage) 
+			// 批量操作路由必须在单个资源路由之前
+			authorized.POST("/images/batch/delete", h.DeleteImagesBatch) // 批量删除图片
+			// 单个资源路由
 			authorized.POST("/images/:id/tags", h.AddTagToImage)
 			authorized.DELETE("/images/:id/tags/:tagID", h.RemoveTagFromImage)
-			authorized.GET("/images/:id", h.GetImageByID)
 			authorized.GET("/images/:id/file", h.GetImageFile) // 获取图片文件（用于编辑）
-			authorized.DELETE("/images/:id", h.DeleteImage) // 删除图片
+			authorized.GET("/images/:id", h.GetImageByID)
+			authorized.DELETE("/images/:id", h.DeleteImage) // 删除单张图片
 			authorized.PUT("/images/:id/edit", h.EditImage) // 编辑图片
 			// AI 标签分析
 			authorized.POST("/images/:id/analyze", h.AnalyzeImage) // 手动触发 AI 分析
