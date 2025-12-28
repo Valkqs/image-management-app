@@ -21,24 +21,24 @@ const Home: React.FC = () => {
           </div>
         </div>
         
-        <h1 className="text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 dark:text-gray-100 mb-4 px-4">
           欢迎来到 <span className="bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent">ImageHub</span>
         </h1>
-        <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-8">
+        <p className="text-base sm:text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-6 sm:mb-8 px-4">
           一个现代化、功能强大的图片管理系统。轻松上传、管理和组织您的照片收藏。
         </p>
         
-        <div className="flex gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
           {isLoggedIn ? (
-            <Link to="/dashboard" className="btn btn-primary px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all">
+            <Link to="/dashboard" className="btn btn-primary px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all w-full sm:w-auto text-center">
               进入图片库
             </Link>
           ) : (
             <>
-              <Link to="/register" className="btn btn-primary px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all">
+              <Link to="/register" className="btn btn-primary px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all w-full sm:w-auto text-center">
                 开始使用
               </Link>
-              <Link to="/login" className="btn btn-outline px-8 py-3 text-lg">
+              <Link to="/login" className="btn btn-outline px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg w-full sm:w-auto text-center">
                 登录
               </Link>
             </>
@@ -47,7 +47,7 @@ const Home: React.FC = () => {
       </div>
 
       {/* Features Section */}
-      <div className="grid md:grid-cols-3 gap-8 py-12">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 py-8 sm:py-12 px-4">
         <div className="card p-6 text-center hover:shadow-xl transition-all">
           <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -80,8 +80,8 @@ const Home: React.FC = () => {
       </div>
 
       {/* Stats Section */}
-      <div className="card p-8">
-        <div className="grid md:grid-cols-3 gap-8 text-center">
+      <div className="card p-6 sm:p-8 mx-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
           <div>
             <div className="text-4xl font-bold text-blue-600 dark:text-blue-400 mb-2">快速</div>
             <p className="text-gray-600 dark:text-gray-300">毫秒级的图片加载速度</p>

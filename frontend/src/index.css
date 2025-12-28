@@ -9,6 +9,13 @@
   
   body {
     @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased;
+  /* 移动端优化：防止文本选择时的蓝色高亮 */
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* 移动端优化：改善触摸体验 */
+  button, a {
+    touch-action: manipulation;
   }
 }
 

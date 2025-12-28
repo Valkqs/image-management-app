@@ -5,6 +5,7 @@ import ImageEditor from './ImageEditor';
 import apiClient from '../api/client';
 import Toast from './Toast';
 import { useToast } from '../hooks/useToast';
+import { getImageURL } from '../utils/api';
 
 // 定义 Tag 类型
 interface Tag {
@@ -236,12 +237,12 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
           className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 animate-fade-in"
           onClick={() => setShowEditor(false)}
         >
-          <div 
-            className="bg-white dark:bg-gray-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in p-6 transition-colors"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">编辑图片</h2>
+        <div 
+          className="bg-white dark:bg-gray-800 rounded-none sm:rounded-2xl max-w-5xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] overflow-y-auto shadow-2xl animate-scale-in p-4 sm:p-6 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">编辑图片</h2>
               <button
                 onClick={() => setShowEditor(false)}
                 className="w-10 h-10 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full flex items-center justify-center transition-all"
@@ -253,7 +254,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
             </div>
             <ImageEditor
               key={`editor-${currentImage.ID}-${editorVersion}`}
-              imageUrl={`http://localhost:8080/${currentImage.filePath}`}
+              imageUrl={getImageURL(currentImage.filePath)}
               imageID={currentImage.ID}
               version={editorVersion}
               onSave={handleEditComplete}
@@ -277,34 +278,34 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
       ))}
       
       <div 
-        className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4 animate-fade-in"
+        className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-0 sm:p-4 animate-fade-in"
         onClick={onClose}
       >
         <div 
-          className="bg-white dark:bg-gray-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden shadow-2xl animate-scale-in flex flex-col md:flex-row transition-colors"
+          className="bg-white dark:bg-gray-800 rounded-none sm:rounded-2xl max-w-6xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] overflow-hidden shadow-2xl animate-scale-in flex flex-col transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 关闭按钮 */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 w-10 h-10 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all"
+            className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 w-8 h-8 sm:w-10 sm:h-10 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
 
           {/* 图片区域 */}
-          <div className="flex-1 bg-gray-900 flex items-center justify-center p-8 relative">
+          <div className="flex-1 bg-gray-900 flex items-center justify-center p-4 sm:p-8 relative min-h-0">
             {images.length > 1 && (
               <>
                 {/* 上一张按钮 */}
                 <button
                   onClick={handlePrevious}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all z-10"
+                  className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all z-10 touch-manipulation"
                   aria-label="上一张"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
@@ -312,33 +313,33 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
                 {/* 下一张按钮 */}
                 <button
                   onClick={handleNext}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all z-10"
+                  className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 bg-black bg-opacity-50 hover:bg-opacity-70 text-white rounded-full flex items-center justify-center transition-all z-10 touch-manipulation"
                   aria-label="下一张"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
                 
                 {/* 图片计数器 */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-4 py-2 rounded-full text-sm z-10">
+                <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 bg-black bg-opacity-50 text-white px-3 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm z-10">
                   {currentIndex + 1} / {images.length}
                 </div>
               </>
             )}
             <img
               key={`${currentImage.ID}-${(currentImage as any)._cacheBuster || ''}`}
-              src={`http://localhost:8080/${currentImage.filePath}?v=${(currentImage as any)._cacheBuster || Date.now()}`}
+              src={`${getImageURL(currentImage.filePath)}?v=${(currentImage as any)._cacheBuster || Date.now()}`}
               alt={currentImage.filename}
-              className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              className="max-w-full max-h-[50vh] sm:max-h-[70vh] object-contain rounded-lg"
             />
           </div>
 
           {/* 信息区域 */}
-          <div className="w-full md:w-96 flex flex-col bg-white dark:bg-gray-800 transition-colors">
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="w-full flex flex-col bg-white dark:bg-gray-800 transition-colors max-h-[50vh] sm:max-h-none sm:w-96">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 break-words">
+                <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 break-words">
                   {currentImage.filename}
                 </h2>
               </div>
@@ -441,12 +442,12 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
             </div>
 
             {/* 操作按钮区域 */}
-            <div className="border-t border-gray-200 dark:border-gray-700 p-6 space-y-3 transition-colors">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 sm:p-6 space-y-2 sm:space-y-3 transition-colors">
               {/* AI 分析按钮 */}
               <button
                 onClick={handleAnalyzeImage}
                 disabled={isAnalyzing}
-                className="w-full btn btn-outline flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full btn btn-outline flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base py-2.5 sm:py-2"
               >
                 {isAnalyzing ? (
                   <>
@@ -469,7 +470,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
               {/* 编辑按钮 */}
               <button
                 onClick={handleOpenEditor}
-                className="w-full btn btn-primary flex items-center justify-center gap-2"
+                className="w-full btn btn-primary flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -481,7 +482,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
               {!showDeleteConfirm ? (
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="w-full btn btn-danger flex items-center justify-center gap-2"
+                  className="w-full btn btn-danger flex items-center justify-center gap-2 text-sm sm:text-base py-2.5 sm:py-2"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -489,22 +490,22 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
                   删除图片
                 </button>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-red-600 font-medium text-center">
+                <div className="space-y-2 sm:space-y-3">
+                  <p className="text-xs sm:text-sm text-red-600 dark:text-red-400 font-medium text-center">
                     ⚠️ 确定要删除这张图片吗？此操作不可恢复！
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       onClick={() => setShowDeleteConfirm(false)}
                       disabled={isDeleting}
-                      className="flex-1 btn btn-outline"
+                      className="flex-1 btn btn-outline text-sm sm:text-base py-2.5 sm:py-2 order-2 sm:order-1"
                     >
                       取消
                     </button>
                     <button
                       onClick={handleDelete}
                       disabled={isDeleting}
-                      className="flex-1 btn btn-danger disabled:opacity-50"
+                      className="flex-1 btn btn-danger disabled:opacity-50 text-sm sm:text-base py-2.5 sm:py-2 order-1 sm:order-2"
                     >
                       {isDeleting ? '删除中...' : '确认删除'}
                     </button>

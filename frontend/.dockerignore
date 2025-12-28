@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# 文档
+*.md
+README.md
+
+# 构建产物
+dist
+build
+*.local
+
+# 依赖
+node_modules
+
+# 日志
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 测试
+coverage
+*.lcov
+.nyc_output
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 后端目录（如果存在）
+backend
+

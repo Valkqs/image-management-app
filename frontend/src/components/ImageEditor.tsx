@@ -360,34 +360,34 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* 工具栏 */}
-      <div className="flex flex-wrap gap-2 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
+      <div className="flex flex-wrap gap-2 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
         <button
           onClick={() => setCropMode(!cropMode)}
-          className={`btn ${cropMode ? 'btn-primary' : 'btn-outline'} text-sm`}
+          className={`btn ${cropMode ? 'btn-primary' : 'btn-outline'} text-xs sm:text-sm flex-1 sm:flex-none min-w-[80px]`}
         >
           {cropMode ? '取消裁剪' : '裁剪'}
         </button>
         {cropMode && (
           <button
             onClick={applyCrop}
-            className="btn btn-primary text-sm"
+            className="btn btn-primary text-xs sm:text-sm flex-1 sm:flex-none min-w-[80px]"
           >
             应用裁剪
           </button>
         )}
         <button
           onClick={handleReset}
-          className="btn btn-outline text-sm"
+          className="btn btn-outline text-xs sm:text-sm flex-1 sm:flex-none min-w-[80px]"
         >
           重置
         </button>
       </div>
 
       {/* 色调调整滑块 */}
-      <div className="space-y-3 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">色调调整</h3>
+      <div className="space-y-2 sm:space-y-3 p-3 sm:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 transition-colors">
+        <h3 className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300">色调调整</h3>
         
         <div>
           <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
@@ -399,7 +399,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
             max="100"
             value={brightness}
             onChange={(e) => setBrightness(Number(e.target.value))}
-            className="w-full"
+            className="w-full h-2 sm:h-1"
           />
         </div>
         
@@ -413,7 +413,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
             max="100"
             value={contrast}
             onChange={(e) => setContrast(Number(e.target.value))}
-            className="w-full"
+            className="w-full h-2 sm:h-1"
           />
         </div>
         
@@ -427,7 +427,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
             max="100"
             value={saturation}
             onChange={(e) => setSaturation(Number(e.target.value))}
-            className="w-full"
+            className="w-full h-2 sm:h-1"
           />
         </div>
         
@@ -441,7 +441,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
             max="180"
             value={hue}
             onChange={(e) => setHue(Number(e.target.value))}
-            className="w-full"
+            className="w-full h-2 sm:h-1"
           />
         </div>
       </div>
@@ -449,7 +449,7 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
       {/* Canvas 画布 */}
       <div 
         ref={containerRef}
-        className="flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-4 overflow-auto max-h-[60vh] transition-colors"
+        className="flex justify-center items-center bg-gray-100 dark:bg-gray-900 rounded-lg p-2 sm:p-4 overflow-auto max-h-[40vh] sm:max-h-[60vh] transition-colors"
       >
         <canvas
           ref={canvasRef}
@@ -467,17 +467,17 @@ const ImageEditor: React.FC<ImageEditorProps> = ({ imageUrl, imageID, version, o
       </div>
 
       {/* 操作按钮 */}
-      <div className="flex gap-3 justify-end">
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:justify-end">
         <button
           onClick={onCancel}
-          className="btn btn-outline"
+          className="btn btn-outline w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-2 order-2 sm:order-1"
           disabled={isLoading}
         >
           取消
         </button>
         <button
           onClick={handleSave}
-          className="btn btn-primary"
+          className="btn btn-primary w-full sm:w-auto text-sm sm:text-base py-2.5 sm:py-2 order-1 sm:order-2"
           disabled={isLoading || !imageLoaded}
         >
           {isLoading ? '保存中...' : '另存为新图片'}

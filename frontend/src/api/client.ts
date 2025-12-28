@@ -1,8 +1,9 @@
 import axios, { type AxiosInstance } from 'axios';
+import { getApiBaseURL } from '../utils/api';
 
 // We explicitly type apiClient as an AxiosInstance for full type safety
 const apiClient: AxiosInstance = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: `${getApiBaseURL()}/api/v1`,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -1,0 +1,67 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# 文档
+*.md
+README.md
+TODO.md
+plan.md
+api.md
+*.typ
+
+# 测试文件
+*_test.go
+test_models
+
+# 构建产物
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+*.test
+*.out
+
+# 依赖
+node_modules
+vendor
+
+# 日志
+*.log
+logs
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 临时文件
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# 上传的文件（在 Docker 中使用 volume）
+backend/uploads
+frontend/dist
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 配置文件（保留必要的）
+# backend/go.mod
+# backend/go.sum
+# frontend/package.json
+
