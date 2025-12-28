@@ -1,6 +1,8 @@
 # 多阶段构建：构建阶段
 FROM golang:1.25-alpine AS builder
 
+ENV GOPROXY=https://goproxy.cn,direct
+
 # 设置工作目录
 WORKDIR /app
 
