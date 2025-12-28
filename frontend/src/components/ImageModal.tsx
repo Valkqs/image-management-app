@@ -282,7 +282,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
         onClick={onClose}
       >
         <div 
-          className="bg-white dark:bg-gray-800 rounded-none sm:rounded-2xl max-w-6xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] overflow-hidden shadow-2xl animate-scale-in flex flex-col transition-colors"
+          className="bg-white dark:bg-gray-800 rounded-none sm:rounded-2xl max-w-6xl w-full h-full sm:h-auto max-h-screen sm:max-h-[90vh] overflow-hidden shadow-2xl animate-scale-in flex flex-col md:flex-row transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
           {/* 关闭按钮 */}
@@ -296,7 +296,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
           </button>
 
           {/* 图片区域 */}
-          <div className="flex-1 bg-gray-900 flex items-center justify-center p-4 sm:p-8 relative min-h-0">
+          <div className="flex-1 bg-gray-900 flex items-center justify-center p-4 sm:p-8 relative min-h-0 md:min-h-0 overflow-hidden">
             {images.length > 1 && (
               <>
                 {/* 上一张按钮 */}
@@ -331,13 +331,13 @@ const ImageModal: React.FC<ImageModalProps> = ({ image, images = [], isOpen, onC
               key={`${currentImage.ID}-${(currentImage as any)._cacheBuster || ''}`}
               src={`${getImageURL(currentImage.filePath)}?v=${(currentImage as any)._cacheBuster || Date.now()}`}
               alt={currentImage.filename}
-              className="max-w-full max-h-[50vh] sm:max-h-[70vh] object-contain rounded-lg"
+              className="max-w-full max-h-[45vh] md:max-h-[85vh] object-contain rounded-lg"
             />
           </div>
 
           {/* 信息区域 */}
-          <div className="w-full flex flex-col bg-white dark:bg-gray-800 transition-colors max-h-[50vh] sm:max-h-none sm:w-96">
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <div className="w-full md:w-96 flex flex-col bg-white dark:bg-gray-800 transition-colors max-h-[55vh] md:max-h-none overflow-hidden flex-shrink-0">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 min-h-0">
               <div>
                 <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2 break-words">
                   {currentImage.filename}
