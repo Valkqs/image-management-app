@@ -135,6 +135,11 @@ func (h *Handler) UploadImage(c *gin.Context) {
 			log.Printf("Error saving file %s: %v", file.Filename, err)
 			continue
 		}
+		
+		// 设置文件权限，确保在 Linux 系统中文件可被访问
+		if err := os.Chmod(filePath, 0755); err != nil {
+			log.Printf("Warning: Failed to set file permissions for %s: %v", filePath, err)
+		}
 
 		image := model.Image{
 			UserID:   userID,
@@ -255,8 +260,17 @@ func generateThumbnail(srcPath, destDir, newFileName string) (string, error) {
 	default:
 		return "", fmt.Errorf("unsupported image format for thumbnail: %s", filepath.Ext(srcPath))
 	}
+	
+	if err != nil {
+		return "", err
+	}
+	
+	// 设置文件权限，确保在 Linux 系统中文件可被访问
+	if err := os.Chmod(destPath, 0755); err != nil {
+		log.Printf("Warning: Failed to set thumbnail file permissions for %s: %v", destPath, err)
+	}
 
-	return destPath, err
+	return destPath, nil
 }
 
 // 【最终修正版】parseExif 函数
@@ -610,6 +624,11 @@ func (h *Handler) EditImage(c *gin.Context) {
 	if err := os.WriteFile(newFilePath, decoded, 0644); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save edited image"})
 		return
+	}
+	
+	// 设置文件权限，确保在 Linux 系统中文件可被访问
+	if err := os.Chmod(newFilePath, 0755); err != nil {
+		log.Printf("Warning: Failed to set file permissions for %s: %v", newFilePath, err)
 	}
 
 	// 创建新图片记录
